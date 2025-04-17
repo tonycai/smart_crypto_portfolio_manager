@@ -9,15 +9,20 @@ This workflow handles the end-to-end process of optimizing a cryptocurrency port
 5. Prepare trade execution plan
 """
 import logging
+import uuid
+from typing import Dict, Any, List
+
+from src.agents.orchestration_agent import Workflow, WorkflowStep
 
 logger = logging.getLogger(__name__)
 
-def create_workflow(params):
+def get_workflow(parameters: Dict[str, Any]) -> Workflow:
     """
     Create a portfolio optimization workflow with the given parameters.
+    This function is required by the orchestration agent to load the workflow.
     
     Args:
-        params (dict): Workflow parameters including:
+        parameters (dict): Workflow parameters including:
             - risk_tolerance: low, medium, high
             - investment_horizon: short, medium, long
             - target_assets: list of asset symbols
@@ -25,19 +30,52 @@ def create_workflow(params):
             - preferences: additional preferences for optimization
             
     Returns:
-        dict: Workflow definition with steps, dependencies, and parameters
+        Workflow: A Workflow object with all steps defined
     """
     logger.info("Creating portfolio optimization workflow")
     
     # Validate required parameters
     required_params = ["risk_tolerance", "investment_horizon", "target_assets"]
     for param in required_params:
-        if param not in params:
+        if param not in parameters:
             raise ValueError(f"Missing required parameter: {param}")
     
-    # Create workflow steps
-    workflow = {
-        "name": "Portfolio Optimization",
+    # Create workflow instance
+    workflow_id = f"portfolio-optimization-{uuid.uuid4()}"
+    workflow = Workflow(workflow_id, "Portfolio Optimization", parameters)
+    
+    # Add workflow steps - these match the steps defined in the create_workflow function
+    workflow.add_step("Fetch Market Data", "market-data-agent-001")
+    workflow.add_step("Fetch Historical Prices", "market-data-agent-001")
+    workflow.add_step("Analyze Market Trends", "market-analysis-agent-001")
+    workflow.add_step("Analyze Volatility", "market-analysis-agent-001")
+    workflow.add_step("Analyze Correlations", "market-analysis-agent-001")
+    workflow.add_step("Generate Investment Strategy", "strategy-agent-001")
+    workflow.add_step("Optimize Portfolio", "portfolio-agent-001")
+    workflow.add_step("Prepare Trade Plan", "trade-agent-001")
+    
+    logger.info(f"Created portfolio optimization workflow with ID {workflow_id}")
+    return workflow
+
+# Function to simulate step execution for demo purposes
+def create_workflow(params):
+    """
+    Legacy function for compatibility - uses the new get_workflow function.
+    
+    Args:
+        params (dict): Workflow parameters
+            
+    Returns:
+        dict: Workflow definition with steps, dependencies, and parameters
+    """
+    logger.info("Using legacy create_workflow function")
+    
+    # Create a workflow using the new method
+    workflow = get_workflow(params)
+    
+    # Convert to the old format for compatibility
+    workflow_dict = {
+        "name": workflow.name,
         "description": "Optimizes a cryptocurrency portfolio based on market data and risk parameters",
         "steps": [
             # Step 1: Fetch market data
@@ -142,9 +180,8 @@ def create_workflow(params):
         ]
     }
     
-    return workflow
+    return workflow_dict
 
-# Function to simulate step execution for demo purposes
 def simulate_step_execution(step_id, step_params, context):
     """
     Simulate execution of a workflow step for demonstration purposes.
