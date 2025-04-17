@@ -613,8 +613,10 @@ class RiskManagementAgent:
         # Start a background task to periodically monitor risk
         # This would be implemented in a real system
         
-        # Start the server
-        uvicorn.run(app, host=host, port=port)
+        # Start the server properly in async context
+        config = uvicorn.Config(app, host=host, port=port)
+        server = uvicorn.Server(config)
+        await server.serve()
 
 
 async def main():

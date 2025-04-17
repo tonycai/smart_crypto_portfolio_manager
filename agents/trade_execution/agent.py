@@ -314,8 +314,10 @@ class TradeExecutionAgent:
         
         self.logger.info(f"Starting Trade Execution Agent on {host}:{port}")
         
-        # Start the server
-        uvicorn.run(app, host=host, port=port)
+        # Start the server properly in async context
+        config = uvicorn.Config(app, host=host, port=port)
+        server = uvicorn.Server(config)
+        await server.serve()
 
 
 async def main():
