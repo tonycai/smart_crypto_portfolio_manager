@@ -1,20 +1,26 @@
 """
-LLM Integration Tests for Crypto Order Workflow
+Unit Tests for LLM Crypto Order Integration
 
-This module simulates how an LLM agent would use functions to interact with the MCP client
-and server to execute cryptocurrency orders using the workflow system.
+This module simulates how an LLM agent would interact with the MCP client and server
+for executing cryptocurrency orders.
 """
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import json
 import uuid
 import subprocess
+import sys
+import os
 from datetime import datetime
+
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.workflows.crypto_order_workflow import (
     get_workflow,
     simulate_step_execution,
-    CryptoOrderWorkflow
+    CryptoOrderWorkflow,
+    create_crypto_order_workflow
 )
 
 
