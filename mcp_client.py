@@ -39,7 +39,7 @@ class MCPClient:
         """
         url = f"{self.server_url}/api/v1/mcp/function"
         payload = {
-            "function_name": function_name,
+            "function": function_name,
             "arguments": arguments
         }
         
@@ -56,7 +56,7 @@ class MCPClient:
     
     def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
         """Get status of a specific agent"""
-        return self.call_function("get_agent_status", {"agent_id": agent_id})
+        return self.call_function("get_agent_status", {"agent_name": agent_id})
     
     def execute_workflow(self, workflow_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a workflow"""
@@ -68,6 +68,17 @@ class MCPClient:
     def get_workflow_status(self, workflow_id: str) -> Dict[str, Any]:
         """Get status of a workflow"""
         return self.call_function("get_workflow_status", {"workflow_id": workflow_id})
+    
+    def run_health_check(self) -> Dict[str, Any]:
+        """Check the health of the server"""
+        try:
+            response = requests.get(f"{self.server_url}/")
+            if response.status_code == 200:
+                return {"status": "healthy", "details": response.json()}
+            else:
+                return {"status": "unhealthy", "details": response.text}
+        except Exception as e:
+            return {"status": "error", "details": str(e)}
 
 
 def main():
@@ -99,6 +110,9 @@ def main():
     function_parser.add_argument("function_name", help="Name of the function")
     function_parser.add_argument("--args", help="JSON string of arguments")
     
+    # Health check
+    subparsers.add_parser("health", help="Check health of the server")
+    
     args = parser.parse_args()
     
     client = MCPClient(args.server, args.api_key)
@@ -115,6 +129,8 @@ def main():
     elif args.command == "function":
         arguments = json.loads(args.args) if args.args else {}
         result = client.call_function(args.function_name, arguments)
+    elif args.command == "health":
+        result = client.run_health_check()
     else:
         parser.print_help()
         return
