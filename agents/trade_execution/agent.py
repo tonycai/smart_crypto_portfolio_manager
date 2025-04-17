@@ -142,11 +142,13 @@ class TradeExecutionAgent:
             'timestamp': execution_time
         }
         
-        # Notify the Risk Management Agent
-        await self._notify_risk_management(order_id)
+        # In a real implementation, we would notify the Risk Management Agent
+        # about the executed trade to update portfolio risk metrics
+        self._notify_risk_management(order_id)
         
-        # Notify the Reporting Agent
-        await self._notify_reporting(order_id)
+        # In a real implementation, we would also notify the Reporting Agent
+        # to log the trade for performance tracking
+        self._notify_reporting(order_id)
         
         return {
             'order_id': order_id,
@@ -312,10 +314,8 @@ class TradeExecutionAgent:
         
         self.logger.info(f"Starting Trade Execution Agent on {host}:{port}")
         
-        # Configure and start the server
-        config = uvicorn.Config(app, host=host, port=port)
-        server = uvicorn.Server(config)
-        await server.serve()
+        # Start the server
+        uvicorn.run(app, host=host, port=port)
 
 
 async def main():
@@ -344,4 +344,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main()) 

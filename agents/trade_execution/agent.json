@@ -7,7 +7,7 @@
   "capabilities": [
     {
       "name": "execute_trade",
-      "description": "Executes a cryptocurrency trade on a specified exchange",
+      "description": "Executes a trade on a specified crypto exchange",
       "parameters": {
         "type": "object",
         "properties": {
@@ -26,12 +26,12 @@
           },
           "order_type": {
             "type": "string",
-            "enum": ["market", "limit", "stop_limit"],
-            "description": "The type of order to place"
+            "enum": ["market", "limit", "stop", "stop_limit"],
+            "description": "The type of order to execute"
           },
           "quantity": {
             "type": "number",
-            "description": "The quantity to trade"
+            "description": "The quantity to buy or sell"
           },
           "price": {
             "type": "number",
@@ -39,7 +39,7 @@
           },
           "stop_price": {
             "type": "number",
-            "description": "The stop price for stop-limit orders"
+            "description": "The stop price for stop orders (required for stop and stop_limit orders)"
           }
         },
         "required": ["exchange", "crypto_pair", "action", "order_type", "quantity"]
@@ -49,25 +49,25 @@
         "properties": {
           "order_id": {
             "type": "string",
-            "description": "Unique identifier for the order"
+            "description": "The ID of the executed order"
           },
           "status": {
             "type": "string",
             "enum": ["filled", "partially_filled", "open", "canceled", "rejected"],
-            "description": "Status of the order"
+            "description": "The status of the order"
           },
           "executed_price": {
             "type": "number",
-            "description": "The average price the order was executed at"
+            "description": "The average execution price"
           },
           "executed_quantity": {
             "type": "number",
-            "description": "The quantity that was successfully executed"
+            "description": "The quantity that was executed"
           },
           "timestamp": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp of the execution"
+            "description": "The timestamp of the execution"
           }
         }
       }
@@ -84,7 +84,7 @@
           },
           "order_id": {
             "type": "string",
-            "description": "The ID of the order to check"
+            "description": "The ID of the order"
           }
         },
         "required": ["exchange", "order_id"]
@@ -95,24 +95,26 @@
           "status": {
             "type": "string",
             "enum": ["filled", "partially_filled", "open", "canceled", "rejected"],
-            "description": "Current status of the order"
+            "description": "The current status of the order"
           },
           "executed_price": {
             "type": "number",
-            "description": "The average price the order was executed at"
+            "description": "The average execution price"
           },
           "executed_quantity": {
             "type": "number",
-            "description": "The quantity that was successfully executed"
+            "description": "The quantity that was executed"
           },
           "remaining_quantity": {
             "type": "number",
-            "description": "The quantity that is yet to be executed"
+            "description": "The quantity remaining to be executed"
           }
         }
       }
     }
   ],
   "endpoint": "http://localhost:8002/api/v1/tasks",
-  "supported_protocols": ["a2a/v1"]
+  "supported_protocols": ["a2a/v1"],
+  "auth_required": true,
+  "auth_type": "api_key"
 }

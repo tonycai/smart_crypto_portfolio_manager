@@ -1,0 +1,174 @@
+{
+  "name": "Reporting and Analytics Agent",
+  "description": "Generates reports on trading performance, portfolio valuation, and risk metrics.",
+  "version": "1.0.0",
+  "author": "Smart Crypto Portfolio Manager Team",
+  "contact": "example@smartcrypto.com",
+  "capabilities": [
+    {
+      "name": "generate_performance_report",
+      "description": "Generates a comprehensive performance report for the portfolio",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time_period": {
+            "type": "string",
+            "enum": ["day", "week", "month", "quarter", "year", "custom"],
+            "description": "The time period for the report"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for custom time period"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for custom time period"
+          },
+          "include_metrics": {
+            "type": "array",
+            "description": "Specific metrics to include in the report",
+            "items": {
+              "type": "string",
+              "enum": [
+                "total_return",
+                "daily_returns",
+                "drawdowns",
+                "volatility",
+                "sharpe_ratio",
+                "trade_statistics",
+                "asset_allocation"
+              ]
+            }
+          },
+          "format": {
+            "type": "string",
+            "enum": ["json", "pdf", "html", "csv"],
+            "description": "The format of the generated report"
+          }
+        },
+        "required": ["time_period", "format"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "description": "Unique identifier for the generated report"
+          },
+          "summary": {
+            "type": "object",
+            "description": "Summary of key performance metrics",
+            "properties": {
+              "total_return_pct": {
+                "type": "number",
+                "description": "Total return percentage for the period"
+              },
+              "annualized_return_pct": {
+                "type": "number",
+                "description": "Annualized return percentage"
+              },
+              "max_drawdown_pct": {
+                "type": "number",
+                "description": "Maximum drawdown percentage"
+              },
+              "sharpe_ratio": {
+                "type": "number",
+                "description": "Sharpe ratio"
+              }
+            }
+          },
+          "report_url": {
+            "type": "string",
+            "description": "URL to access the full report"
+          },
+          "report_data": {
+            "type": "object",
+            "description": "The full report data (included for JSON format)"
+          }
+        }
+      }
+    },
+    {
+      "name": "generate_portfolio_valuation",
+      "description": "Generates a current portfolio valuation report",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "include_details": {
+            "type": "boolean",
+            "description": "Whether to include detailed breakdown of each position"
+          },
+          "valuation_currency": {
+            "type": "string",
+            "description": "The currency for valuation (e.g., USD, EUR)"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["json", "pdf", "html", "csv"],
+            "description": "The format of the generated report"
+          }
+        },
+        "required": ["format"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "total_value": {
+            "type": "number",
+            "description": "Total portfolio value"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency of valuation"
+          },
+          "valuation_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the valuation"
+          },
+          "assets": {
+            "type": "array",
+            "description": "Details of each asset in the portfolio",
+            "items": {
+              "type": "object",
+              "properties": {
+                "crypto": {
+                  "type": "string",
+                  "description": "Cryptocurrency symbol"
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "Quantity held"
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Current value"
+                },
+                "allocation_pct": {
+                  "type": "number",
+                  "description": "Percentage of the portfolio"
+                },
+                "price": {
+                  "type": "number",
+                  "description": "Current price"
+                },
+                "24h_change_pct": {
+                  "type": "number",
+                  "description": "24-hour price change percentage"
+                }
+              }
+            }
+          },
+          "report_url": {
+            "type": "string",
+            "description": "URL to access the full report"
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": "http://localhost:8004/api/v1/tasks",
+  "supported_protocols": ["a2a/v1"]
+}

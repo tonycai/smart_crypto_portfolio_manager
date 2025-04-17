@@ -1,58 +1,46 @@
 {
-  "reporting": {
+  "database": {
+    "type": "postgresql",
+    "host": "db",
+    "port": 5432,
+    "username": "portfolio_manager",
+    "password": "asdf123",
+    "database": "crypto_portfolio"
+  },
+  "reports": {
     "daily_report": {
       "enabled": true,
-      "time": "23:59",
+      "time": "00:00:00",
       "timezone": "UTC",
-      "metrics": ["portfolio_value", "daily_pnl", "trade_count", "asset_allocation"]
+      "format": ["json", "pdf"]
     },
     "weekly_report": {
       "enabled": true,
-      "day": "Friday",
-      "time": "23:59",
+      "day": "Monday",
+      "time": "00:00:00",
       "timezone": "UTC",
-      "metrics": ["portfolio_value", "weekly_pnl", "trade_count", "win_rate", "asset_allocation", "risk_metrics"]
+      "format": ["json", "pdf"]
     },
     "monthly_report": {
       "enabled": true,
       "day": 1,
-      "time": "00:01",
+      "time": "00:00:00",
       "timezone": "UTC",
-      "metrics": ["portfolio_value", "monthly_pnl", "trade_count", "win_rate", "asset_allocation", "risk_metrics", "performance_analysis"]
-    },
-    "formats": ["json", "csv", "pdf"]
-  },
-  "analytics": {
-    "trade_analytics": {
-      "metrics": ["win_rate", "avg_profit", "avg_loss", "profit_factor", "max_drawdown", "sharpe_ratio", "sortino_ratio", "expectancy"],
-      "trade_breakdown": {
-        "by_asset": true,
-        "by_time_of_day": true,
-        "by_day_of_week": true,
-        "by_strategy": true
-      }
-    },
-    "portfolio_analytics": {
-      "metrics": ["asset_correlation", "volatility", "beta", "alpha", "r_squared", "information_ratio"],
-      "historical_analysis": {
-        "periods": ["day", "week", "month", "quarter", "year"]
-      }
-    },
-    "market_analytics": {
-      "track_benchmark_indices": true,
-      "correlation_analysis": true,
-      "market_sentiment_analysis": false
+      "format": ["json", "pdf"]
     }
   },
-  "data_storage": {
-    "trade_history_retention_days": 365,
-    "portfolio_snapshot_frequency": "daily",
-    "price_data_granularity": "1h"
+  "metrics": {
+    "include_total_return": true,
+    "include_daily_returns": true,
+    "include_drawdowns": true,
+    "include_volatility": true,
+    "include_sharpe_ratio": true,
+    "include_trade_statistics": true,
+    "include_asset_allocation": true
   },
-  "visualization": {
-    "charts": ["line", "bar", "pie", "candlestick", "heatmap"],
-    "default_theme": "light",
-    "include_in_reports": true
+  "storage": {
+    "report_retention_days": 365,
+    "data_retention_days": 730
   },
   "a2a": {
     "market_analysis_agent": "http://market-analysis-agent:8001",
@@ -60,8 +48,10 @@
     "risk_management_agent": "http://risk-management-agent:8003"
   },
   "export": {
-    "auto_export": false,
-    "export_location": "/data/reports/",
-    "export_formats": ["json", "csv"]
+    "enable_email_delivery": false,
+    "email_recipients": [],
+    "enable_s3_upload": false,
+    "s3_bucket": "",
+    "s3_prefix": "reports/"
   }
 }

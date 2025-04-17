@@ -1,21 +1,20 @@
 """
 Risk Management Agent for Smart Crypto Portfolio Manager
 
-This agent monitors portfolio risk exposure, assesses risks of potential trades,
-and suggests risk mitigation actions.
+This agent monitors the portfolio's overall risk exposure, assesses risk associated with
+potential trades, and triggers actions to mitigate risk.
 """
 
 import os
 import json
 import asyncio
 import logging
-import uuid
+import numpy as np
+import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
 import uvicorn
-import numpy as np
-import pandas as pd
 from fastapi import FastAPI
 
 # Import the A2A server implementation
@@ -27,7 +26,9 @@ from a2a.client import A2AClient
 
 
 class RiskManagementAgent:
-    """Agent for monitoring and managing portfolio risk."""
+    """
+    Agent for monitoring and managing cryptocurrency portfolio risk.
+    """
     
     def __init__(self, config_path: str = None):
         """
@@ -64,31 +65,46 @@ class RiskManagementAgent:
         self.a2a_server.register_capability_handler('monitor_portfolio_risk', self.monitor_portfolio_risk)
         self.a2a_server.register_capability_handler('update_portfolio', self.update_portfolio)
         
-        # Initialize in-memory portfolio data
-        self.portfolio = self._initialize_portfolio()
-        self.price_history = {}
-        self.trade_history = []
+        # Initialize portfolio data
+        self.portfolio = {}
+        self.portfolio_history = []
+        self.risk_metrics = {}
         
-        # Load risk settings from configuration
-        self.risk_settings = self.config.get('portfolio', {})
+        # Load initial portfolio data if available
+        self._load_portfolio()
+        
+        # Risk thresholds
+        self.risk_thresholds = self.config.get('risk_thresholds', {
+            'value_at_risk': 0.05,  # 5% VaR
+            'exposure_per_asset': 0.25,  # 25% max exposure per asset
+            'total_exposure': 0.75,  # 75% max total exposure
+            'volatility': 0.02,  # 2% daily volatility
+            'correlation': 0.8  # 0.8 correlation threshold
+        })
     
-    def _initialize_portfolio(self) -> Dict[str, Dict[str, Any]]:
+    def _load_portfolio(self):
         """
-        Initialize an empty portfolio structure.
-        
-        Returns:
-            Dictionary with portfolio data
+        Load initial portfolio data.
+        In a real implementation, this would load from a database or storage service.
         """
-        return {
-            "assets": {},
-            "total_value_usd": 0,
-            "cash_usd": 100000,  # Starting with $100k in cash
-            "last_updated": datetime.utcnow().isoformat()
-        }
+        # For this prototype, we'll initialize with an empty portfolio
+        # or load from a predefined configuration
+        initial_holdings = self.config.get('initial_holdings', [])
+        for holding in initial_holdings:
+            crypto = holding.get('crypto')
+            quantity = holding.get('quantity', 0)
+            avg_price = holding.get('avg_price', 0)
+            
+            if crypto and quantity > 0:
+                self.portfolio[crypto] = {
+                    'quantity': quantity,
+                    'avg_price': avg_price,
+                    'last_updated': datetime.utcnow().isoformat()
+                }
     
     async def assess_trade_risk(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Assess the risk of a proposed trade based on current portfolio exposure.
+        Assess the risk of a proposed trade in the context of the current portfolio.
         
         Args:
             parameters: Parameters for the risk assessment
@@ -106,476 +122,370 @@ class RiskManagementAgent:
         
         # Validate required parameters
         if not crypto_pair or not action or quantity is None or price is None:
-            raise ValueError("Missing required parameters for trade risk assessment")
+            raise ValueError("Missing required parameters for risk assessment")
         
-        # Parse asset from trading pair (e.g., 'BTC/USD' -> 'BTC')
-        asset = crypto_pair.split('/')[0]
+        # Extract the base crypto from the trading pair (e.g., BTC from BTC/USD)
+        crypto = crypto_pair.split('/')[0]
         
-        # Calculate trade value in USD
-        trade_value_usd = quantity * price
+        # Calculate the trade value
+        trade_value = quantity * price
         
-        # Calculate current portfolio exposure
-        current_exposure = self._calculate_asset_exposure(asset)
+        # Assess risk factors
         
-        # Calculate new exposure after the trade
-        new_exposure = self._calculate_new_exposure(asset, action, trade_value_usd)
-        
-        # Calculate risk score based on multiple factors
-        risk_score, reasons = self._calculate_risk_score(asset, action, quantity, price, new_exposure)
-        
-        # Determine if the trade is approved based on risk score
-        approval = risk_score < 70  # Approve trades with risk score below 70
-        
-        # Calculate maximum recommended quantity to maintain acceptable risk
-        max_recommended_quantity = self._calculate_max_recommended_quantity(
-            asset, action, price, risk_score
+        # 1. Check portfolio concentration risk
+        concentration_risk, max_recommended_quantity = self._assess_concentration_risk(
+            crypto, quantity, price, action
         )
         
+        # 2. Check volatility risk
+        volatility_risk = self._assess_volatility_risk(crypto)
+        
+        # 3. Check correlation risk
+        correlation_risk = self._assess_correlation_risk(crypto)
+        
+        # 4. Determine overall risk score
+        risk_score = (
+            concentration_risk * 0.5 +  # 50% weight on concentration
+            volatility_risk * 0.3 +     # 30% weight on volatility
+            correlation_risk * 0.2      # 20% weight on correlation
+        ) * 100  # Scale to 0-100
+        
+        # Determine approval based on risk score threshold
+        approval = risk_score < 70  # Approve if risk score is less than 70
+        
+        # Prepare reasons
+        reasons = []
+        if concentration_risk > 0.7:
+            reasons.append(f"High concentration risk: Trade would result in significant portfolio exposure to {crypto}")
+        if volatility_risk > 0.7:
+            reasons.append(f"High volatility risk: {crypto} has shown significant price volatility")
+        if correlation_risk > 0.7:
+            reasons.append(f"High correlation risk: {crypto} is highly correlated with other assets in the portfolio")
+        
+        if not reasons:
+            reasons.append("Trade is within acceptable risk parameters")
+        
         return {
-            "risk_score": risk_score,
-            "approval": approval,
-            "max_recommended_quantity": max_recommended_quantity,
-            "reasons": reasons
+            'risk_score': risk_score,
+            'approval': approval,
+            'max_recommended_quantity': max_recommended_quantity,
+            'reasons': reasons
         }
     
     async def monitor_portfolio_risk(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Monitor the overall portfolio risk and return risk metrics.
+        Monitor the overall portfolio risk and generate alerts if thresholds are exceeded.
         
         Args:
             parameters: Parameters for the risk monitoring
             
         Returns:
-            Risk monitoring results
+            Portfolio risk assessment
         """
         self.logger.info(f"Monitoring portfolio risk: {parameters}")
         
         # Extract parameters
-        metrics = parameters.get('metrics', [
-            'var', 'exposure', 'correlation', 'volatility', 'sharpe_ratio'
-        ])
+        metrics = parameters.get('metrics', ['value_at_risk', 'exposure', 'volatility', 'correlation'])
+        threshold_overrides = parameters.get('threshold_overrides', {})
         
-        # Calculate requested metrics
-        metrics_results = {}
+        # Apply threshold overrides
+        thresholds = self.risk_thresholds.copy()
+        thresholds.update(threshold_overrides)
+        
+        # Calculate risk metrics
+        risk_metrics = {}
         alerts = []
         
-        # Calculate Value at Risk (VaR)
-        if 'var' in metrics:
-            var_value = self._calculate_value_at_risk()
-            metrics_results['var'] = var_value
+        # Value at Risk (VaR)
+        if 'value_at_risk' in metrics:
+            var = self._calculate_value_at_risk()
+            risk_metrics['value_at_risk'] = var
             
-            # Check if VaR exceeds threshold
-            var_threshold = self.risk_settings.get('var', {}).get('threshold', 0.05)
-            if var_value > var_threshold:
+            if var > thresholds['value_at_risk']:
                 alerts.append({
-                    "metric": "var",
-                    "value": var_value,
-                    "threshold": var_threshold,
-                    "recommendation": "Consider reducing position sizes or hedging"
+                    'metric': 'value_at_risk',
+                    'value': var,
+                    'threshold': thresholds['value_at_risk'],
+                    'recommendation': "Consider reducing exposure or adding hedging positions"
                 })
         
-        # Calculate portfolio exposure
+        # Exposure metrics
         if 'exposure' in metrics:
-            exposure = self._calculate_portfolio_exposure()
-            metrics_results['exposure'] = exposure
+            # Calculate per-asset exposure
+            total_value = self._calculate_portfolio_value()
+            exposures = {}
             
-            # Check if exposure exceeds threshold
-            max_exposure = self.risk_settings.get('max_exposure_percent', {}).get('total', 80)
-            if exposure > max_exposure:
+            for crypto, details in self.portfolio.items():
+                # In a real implementation, get the current price from market data
+                current_price = self._get_current_price(crypto)
+                value = details['quantity'] * current_price
+                exposure = value / total_value if total_value > 0 else 0
+                exposures[crypto] = exposure
+                
+                if exposure > thresholds['exposure_per_asset']:
+                    alerts.append({
+                        'metric': f'exposure_{crypto}',
+                        'value': exposure,
+                        'threshold': thresholds['exposure_per_asset'],
+                        'recommendation': f"Consider reducing {crypto} position to rebalance portfolio"
+                    })
+            
+            # Calculate total exposure
+            total_exposure = sum(exposures.values())
+            risk_metrics['total_exposure'] = total_exposure
+            risk_metrics['exposures'] = exposures
+            
+            if total_exposure > thresholds['total_exposure']:
                 alerts.append({
-                    "metric": "exposure",
-                    "value": exposure,
-                    "threshold": max_exposure,
-                    "recommendation": "Reduce exposure by taking profits or selling some assets"
+                    'metric': 'total_exposure',
+                    'value': total_exposure,
+                    'threshold': thresholds['total_exposure'],
+                    'recommendation': "Consider moving some assets to stable reserves"
                 })
         
-        # Calculate asset correlation
-        if 'correlation' in metrics:
-            correlation = self._calculate_asset_correlation()
-            metrics_results['correlation'] = correlation
-            
-            # Check if correlation exceeds threshold
-            corr_threshold = self.risk_settings.get('diversification', {}).get(
-                'asset_correlation_threshold', 0.7
-            )
-            if correlation > corr_threshold:
-                alerts.append({
-                    "metric": "correlation",
-                    "value": correlation,
-                    "threshold": corr_threshold,
-                    "recommendation": "Increase diversification by adding uncorrelated assets"
-                })
-        
-        # Calculate portfolio volatility
+        # Volatility
         if 'volatility' in metrics:
-            volatility = self._calculate_portfolio_volatility()
-            metrics_results['volatility'] = volatility
+            portfolio_volatility = self._calculate_portfolio_volatility()
+            risk_metrics['volatility'] = portfolio_volatility
             
-            # Check if volatility exceeds threshold
-            vol_threshold = self.risk_settings.get('market_risk', {}).get('volatility_threshold', 0.3)
-            if volatility > vol_threshold:
+            if portfolio_volatility > thresholds['volatility']:
                 alerts.append({
-                    "metric": "volatility",
-                    "value": volatility,
-                    "threshold": vol_threshold,
-                    "recommendation": "Consider reducing positions in high-volatility assets"
+                    'metric': 'volatility',
+                    'value': portfolio_volatility,
+                    'threshold': thresholds['volatility'],
+                    'recommendation': "Consider adding less volatile assets to reduce overall portfolio volatility"
                 })
         
-        # Calculate Sharpe Ratio
-        if 'sharpe_ratio' in metrics:
-            sharpe = self._calculate_sharpe_ratio()
-            metrics_results['sharpe_ratio'] = sharpe
-            
-            # Check if Sharpe Ratio is below threshold
-            sharpe_threshold = 1.0  # Generally, Sharpe Ratio > 1 is considered good
-            if sharpe < sharpe_threshold:
-                alerts.append({
-                    "metric": "sharpe_ratio",
-                    "value": sharpe,
-                    "threshold": sharpe_threshold,
-                    "recommendation": "Optimize portfolio for better risk-adjusted returns"
-                })
+        # Correlation
+        if 'correlation' in metrics:
+            # In a real implementation, we would calculate a correlation matrix
+            # For this prototype, we'll skip the actual calculation
+            risk_metrics['correlation'] = 0.5  # Placeholder
         
-        # Determine overall risk level based on alerts
-        risk_level = self._determine_risk_level(metrics_results, alerts)
+        # Determine overall risk level
+        overall_risk_level = 'low'
+        if len(alerts) >= 3:
+            overall_risk_level = 'extreme'
+        elif len(alerts) == 2:
+            overall_risk_level = 'high'
+        elif len(alerts) == 1:
+            overall_risk_level = 'medium'
         
         return {
-            "risk_level": risk_level,
-            "metrics": metrics_results,
-            "alerts": alerts
+            'overall_risk_level': overall_risk_level,
+            'metrics': risk_metrics,
+            'alerts': alerts
         }
     
     async def update_portfolio(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Update the portfolio data with a new trade.
+        Update the portfolio with a new trade execution.
         
         Args:
             parameters: Parameters for the portfolio update
             
         Returns:
-            Update results
+            Update status
         """
-        self.logger.info(f"Updating portfolio with trade: {parameters}")
+        self.logger.info(f"Updating portfolio: {parameters}")
         
         # Extract parameters
-        order_id = parameters.get('order_id')
-        exchange = parameters.get('exchange')
         crypto_pair = parameters.get('crypto_pair')
         action = parameters.get('action')
         quantity = parameters.get('quantity')
         executed_price = parameters.get('executed_price')
         
         # Validate required parameters
-        if not all([order_id, exchange, crypto_pair, action, quantity, executed_price]):
+        if not crypto_pair or not action or quantity is None or executed_price is None:
             raise ValueError("Missing required parameters for portfolio update")
         
-        # Parse asset from trading pair (e.g., 'BTC/USD' -> 'BTC')
-        asset = crypto_pair.split('/')[0]
+        # Extract the base crypto from the trading pair (e.g., BTC from BTC/USD)
+        crypto = crypto_pair.split('/')[0]
         
-        # Calculate trade value in USD
-        trade_value_usd = quantity * executed_price
+        # Update portfolio with the new trade
+        timestamp = datetime.utcnow().isoformat()
         
-        # Update portfolio data
-        if asset not in self.portfolio['assets']:
-            self.portfolio['assets'][asset] = {
-                "quantity": 0,
-                "value_usd": 0,
-                "avg_price": 0
-            }
-        
-        # Update asset quantity and value based on action
         if action == 'buy':
-            # Calculate new average price
-            current_quantity = self.portfolio['assets'][asset]["quantity"]
-            current_value = self.portfolio['assets'][asset]["value_usd"]
-            
-            new_quantity = current_quantity + quantity
-            new_value = current_value + trade_value_usd
-            
-            if new_quantity > 0:
-                new_avg_price = new_value / new_quantity
+            if crypto in self.portfolio:
+                # Update existing position with weighted average price
+                current_quantity = self.portfolio[crypto]['quantity']
+                current_avg_price = self.portfolio[crypto]['avg_price']
+                
+                new_quantity = current_quantity + quantity
+                new_avg_price = (current_quantity * current_avg_price + quantity * executed_price) / new_quantity
+                
+                self.portfolio[crypto] = {
+                    'quantity': new_quantity,
+                    'avg_price': new_avg_price,
+                    'last_updated': timestamp
+                }
             else:
-                new_avg_price = executed_price
-            
-            # Update asset data
-            self.portfolio['assets'][asset]["quantity"] = new_quantity
-            self.portfolio['assets'][asset]["value_usd"] = new_value
-            self.portfolio['assets'][asset]["avg_price"] = new_avg_price
-            
-            # Deduct cash for the purchase
-            self.portfolio['cash_usd'] -= trade_value_usd
-            
+                # Add new position
+                self.portfolio[crypto] = {
+                    'quantity': quantity,
+                    'avg_price': executed_price,
+                    'last_updated': timestamp
+                }
         elif action == 'sell':
-            # Calculate remaining quantity and value
-            current_quantity = self.portfolio['assets'][asset]["quantity"]
-            current_value = self.portfolio['assets'][asset]["value_usd"]
-            current_avg_price = self.portfolio['assets'][asset]["avg_price"]
+            if crypto not in self.portfolio:
+                raise ValueError(f"Cannot sell {crypto}: not in portfolio")
             
-            # Check if we have enough to sell
-            if current_quantity < quantity:
-                self.logger.warning(f"Selling more {asset} than in portfolio!")
-                actual_quantity = current_quantity
-            else:
-                actual_quantity = quantity
+            current_quantity = self.portfolio[crypto]['quantity']
             
-            # Calculate new values
-            new_quantity = current_quantity - actual_quantity
+            if quantity > current_quantity:
+                raise ValueError(f"Cannot sell {quantity} {crypto}: only have {current_quantity}")
             
-            # Calculate the value reduction proportionally from the average price
-            value_reduction = actual_quantity * current_avg_price
-            new_value = current_value - value_reduction
+            # Update quantity
+            new_quantity = current_quantity - quantity
             
             if new_quantity > 0:
-                new_avg_price = current_avg_price  # Keep the same average price
+                # Just update the quantity
+                self.portfolio[crypto]['quantity'] = new_quantity
+                self.portfolio[crypto]['last_updated'] = timestamp
             else:
-                new_avg_price = 0
-            
-            # Update asset data
-            self.portfolio['assets'][asset]["quantity"] = new_quantity
-            self.portfolio['assets'][asset]["value_usd"] = new_value
-            self.portfolio['assets'][asset]["avg_price"] = new_avg_price
-            
-            # Add cash from the sale
-            self.portfolio['cash_usd'] += actual_quantity * executed_price
+                # Remove the position entirely
+                del self.portfolio[crypto]
         
-        # Update total portfolio value
-        self.portfolio['total_value_usd'] = self._calculate_total_portfolio_value()
-        
-        # Update timestamp
-        self.portfolio['last_updated'] = datetime.utcnow().isoformat()
-        
-        # Add to trade history
-        self.trade_history.append({
-            "order_id": order_id,
-            "exchange": exchange,
-            "crypto_pair": crypto_pair,
-            "action": action,
-            "quantity": quantity,
-            "executed_price": executed_price,
-            "timestamp": datetime.utcnow().isoformat()
+        # Add to portfolio history
+        self.portfolio_history.append({
+            'timestamp': timestamp,
+            'action': action,
+            'crypto': crypto,
+            'quantity': quantity,
+            'price': executed_price,
+            'portfolio': self.portfolio.copy()
         })
         
-        # Check new risk level
-        risk_monitoring_result = await self.monitor_portfolio_risk({"metrics": ["var", "exposure"]})
-        new_risk_level = risk_monitoring_result.get("risk_level", "medium")
-        
-        # Trigger emergency protocols if risk is extreme
-        if new_risk_level == "extreme":
-            await self._trigger_emergency_protocols()
+        # Update risk metrics
+        self._update_risk_metrics()
         
         return {
-            "success": True,
-            "new_risk_level": new_risk_level
+            'status': 'success',
+            'portfolio': self.portfolio,
+            'timestamp': timestamp
         }
     
-    def _calculate_asset_exposure(self, asset: str) -> float:
+    def _assess_concentration_risk(self, crypto: str, quantity: float, price: float, action: str) -> Tuple[float, float]:
         """
-        Calculate the current exposure to a specific asset as a percentage of portfolio.
+        Assess the concentration risk of a proposed trade.
         
         Args:
-            asset: The asset to calculate exposure for
-            
-        Returns:
-            Exposure as a percentage (0-100)
-        """
-        # Get total portfolio value
-        total_value = self.portfolio['total_value_usd']
-        if total_value == 0:
-            return 0
-        
-        # Get asset value
-        asset_value = self.portfolio['assets'].get(asset, {}).get('value_usd', 0)
-        
-        # Calculate exposure percentage
-        exposure = (asset_value / total_value) * 100
-        
-        return exposure
-    
-    def _calculate_new_exposure(self, asset: str, action: str, trade_value_usd: float) -> float:
-        """
-        Calculate the new exposure to an asset after a potential trade.
-        
-        Args:
-            asset: The asset to calculate exposure for
-            action: Whether the trade is a buy or sell
-            trade_value_usd: The value of the trade in USD
-            
-        Returns:
-            New exposure as a percentage (0-100)
-        """
-        # Get current asset value
-        current_asset_value = self.portfolio['assets'].get(asset, {}).get('value_usd', 0)
-        
-        # Calculate new asset value based on action
-        if action == 'buy':
-            new_asset_value = current_asset_value + trade_value_usd
-        else:  # sell
-            new_asset_value = current_asset_value - trade_value_usd
-            new_asset_value = max(0, new_asset_value)  # Cannot be negative
-        
-        # Calculate new total portfolio value
-        current_total_value = self.portfolio['total_value_usd']
-        new_total_value = current_total_value  # Total value doesn't change for buy/sell
-        
-        if new_total_value == 0:
-            return 0
-        
-        # Calculate new exposure percentage
-        new_exposure = (new_asset_value / new_total_value) * 100
-        
-        return new_exposure
-    
-    def _calculate_risk_score(
-        self, asset: str, action: str, quantity: float, price: float, new_exposure: float
-    ) -> Tuple[float, List[str]]:
-        """
-        Calculate a risk score (0-100) for a proposed trade based on multiple factors.
-        
-        Args:
-            asset: The asset being traded
-            action: Whether the trade is a buy or sell
+            crypto: The cryptocurrency
             quantity: The quantity to trade
-            price: The execution price
-            new_exposure: The new exposure to the asset after the trade
+            price: The expected price
+            action: Buy or sell
             
         Returns:
-            Tuple of (risk_score, reasons)
+            Tuple of (risk_score, max_recommended_quantity)
         """
-        reasons = []
-        risk_factors = []
+        # Calculate the current portfolio value
+        total_value = self._calculate_portfolio_value()
         
-        # Factor 1: Exposure risk
-        max_exposure = self.risk_settings.get('max_exposure_percent', {}).get(
-            'per_asset', {}).get(asset, 10
-        )
+        # Calculate the value of the proposed trade
+        trade_value = quantity * price
         
-        exposure_risk = (new_exposure / max_exposure) * 50
-        risk_factors.append(exposure_risk)
+        # Calculate the current exposure to this crypto
+        current_exposure = 0
+        if crypto in self.portfolio:
+            current_price = self._get_current_price(crypto)
+            current_value = self.portfolio[crypto]['quantity'] * current_price
+            current_exposure = current_value / total_value if total_value > 0 else 0
         
-        if new_exposure > max_exposure:
-            reasons.append(f"Exposure to {asset} ({new_exposure:.2f}%) exceeds maximum ({max_exposure}%)")
+        # Calculate the new exposure after the trade
+        new_total_value = total_value
+        new_crypto_value = 0
         
-        # Factor 2: Asset volatility risk
-        volatility = self._get_asset_volatility(asset)
-        volatility_risk = volatility * 100
-        risk_factors.append(volatility_risk)
+        if action == 'buy':
+            new_total_value = total_value + trade_value
+            new_crypto_value = (self.portfolio.get(crypto, {}).get('quantity', 0) + quantity) * price
+        elif action == 'sell':
+            new_total_value = total_value - trade_value
+            new_crypto_value = (self.portfolio.get(crypto, {}).get('quantity', 0) - quantity) * price
         
-        if volatility > 0.3:
-            reasons.append(f"{asset} has high volatility ({volatility:.2f})")
+        new_exposure = new_crypto_value / new_total_value if new_total_value > 0 else 0
         
-        # Factor 3: Market correlation risk
-        correlation = self._get_asset_correlation(asset)
-        correlation_risk = correlation * 50
-        risk_factors.append(correlation_risk)
+        # Calculate the concentration risk score (0-1, higher is more risky)
+        risk_score = min(new_exposure / self.risk_thresholds['exposure_per_asset'], 1.0)
         
-        if correlation > 0.7:
-            reasons.append(f"{asset} has high correlation with portfolio ({correlation:.2f})")
+        # Calculate the maximum recommended quantity
+        max_exposure = self.risk_thresholds['exposure_per_asset']
+        max_value = max_exposure * total_value
         
-        # Factor 4: Order size risk
-        total_value = self.portfolio['total_value_usd']
-        if total_value == 0:
-            order_size_risk = 0
+        if action == 'buy':
+            current_value = self.portfolio.get(crypto, {}).get('quantity', 0) * price
+            max_additional_value = max(max_value - current_value, 0)
+            max_recommended_quantity = max_additional_value / price if price > 0 else 0
         else:
-            order_size_pct = (quantity * price / total_value) * 100
-            order_size_risk = min(order_size_pct * 5, 100)
-            
-            if order_size_pct > 10:
-                reasons.append(f"Order size ({order_size_pct:.2f}% of portfolio) is large")
+            # For selling, no concentration issue
+            max_recommended_quantity = self.portfolio.get(crypto, {}).get('quantity', 0)
         
-        risk_factors.append(order_size_risk)
-        
-        # Calculate final risk score (weighted average of risk factors)
-        weights = [0.4, 0.3, 0.2, 0.1]  # Weights for each risk factor
-        risk_score = sum(score * weight for score, weight in zip(risk_factors, weights))
-        
-        # Reduce risk score for sell orders (selling reduces risk)
-        if action == 'sell':
-            risk_score = max(0, risk_score - 20)
-            reasons.append("Selling reduces overall portfolio risk")
-        
-        # Add an overall assessment
-        if risk_score < 30:
-            reasons.append("Overall risk is low")
-        elif risk_score < 60:
-            reasons.append("Overall risk is moderate")
-        else:
-            reasons.append("Overall risk is high")
-        
-        return min(risk_score, 100), reasons
+        return risk_score, max_recommended_quantity
     
-    def _calculate_max_recommended_quantity(
-        self, asset: str, action: str, price: float, risk_score: float
-    ) -> float:
+    def _assess_volatility_risk(self, crypto: str) -> float:
         """
-        Calculate the maximum recommended quantity to maintain acceptable risk levels.
+        Assess the volatility risk of a cryptocurrency.
         
         Args:
-            asset: The asset being traded
-            action: Whether the trade is a buy or sell
-            price: The execution price
-            risk_score: The calculated risk score
+            crypto: The cryptocurrency
             
         Returns:
-            Maximum recommended quantity
+            Volatility risk score (0-1, higher is more risky)
         """
-        if action == 'sell':
-            # For selling, the max quantity is what we have
-            current_quantity = self.portfolio['assets'].get(asset, {}).get('quantity', 0)
-            return current_quantity
+        # In a real implementation, we would calculate historical volatility
+        # For this prototype, we'll use a simplified approach
         
-        # For buying, calculate max quantity based on max exposure
-        total_value = self.portfolio['total_value_usd']
-        max_exposure_pct = self.risk_settings.get('max_exposure_percent', {}).get(
-            'per_asset', {}).get(asset, 10
-        )
+        # These are just simulated volatility values
+        simulated_volatilities = {
+            'BTC': 0.03,  # 3% daily volatility
+            'ETH': 0.04,
+            'SOL': 0.06,
+            'ADA': 0.05,
+            'DOT': 0.07
+        }
         
-        # Adjust max exposure based on risk score
-        if risk_score > 70:
-            max_exposure_pct = max_exposure_pct * 0.7
-        elif risk_score > 50:
-            max_exposure_pct = max_exposure_pct * 0.9
+        volatility = simulated_volatilities.get(crypto, 0.05)
         
-        # Calculate max value
-        max_value = (max_exposure_pct / 100) * total_value
+        # Calculate the risk score based on volatility
+        risk_score = min(volatility / self.risk_thresholds['volatility'], 1.0)
         
-        # Subtract current value
-        current_value = self.portfolio['assets'].get(asset, {}).get('value_usd', 0)
-        max_additional_value = max_value - current_value
-        
-        # Calculate max quantity
-        if price == 0:
-            return 0
-        
-        max_quantity = max_additional_value / price
-        
-        # Ensure it's not negative
-        return max(0, max_quantity)
+        return risk_score
     
-    def _calculate_total_portfolio_value(self) -> float:
+    def _assess_correlation_risk(self, crypto: str) -> float:
         """
-        Calculate the total value of the portfolio in USD.
+        Assess the correlation risk of a cryptocurrency with the existing portfolio.
         
+        Args:
+            crypto: The cryptocurrency
+            
         Returns:
-            Total portfolio value in USD
+            Correlation risk score (0-1, higher is more risky)
         """
-        asset_values = sum(asset['value_usd'] for asset in self.portfolio['assets'].values())
-        cash = self.portfolio['cash_usd']
-        return asset_values + cash
-    
-    def _calculate_portfolio_exposure(self) -> float:
-        """
-        Calculate the overall portfolio exposure to crypto assets as a percentage.
+        # In a real implementation, we would calculate correlation with existing assets
+        # For this prototype, we'll use a simplified approach
         
-        Returns:
-            Portfolio exposure (0-100)
-        """
-        total_value = self.portfolio['total_value_usd']
-        if total_value == 0:
-            return 0
+        # These are just simulated correlation values
+        simulated_correlations = {
+            'BTC': {'ETH': 0.7, 'SOL': 0.5, 'ADA': 0.4, 'DOT': 0.6},
+            'ETH': {'BTC': 0.7, 'SOL': 0.6, 'ADA': 0.5, 'DOT': 0.7},
+            'SOL': {'BTC': 0.5, 'ETH': 0.6, 'ADA': 0.7, 'DOT': 0.5},
+            'ADA': {'BTC': 0.4, 'ETH': 0.5, 'SOL': 0.7, 'DOT': 0.8},
+            'DOT': {'BTC': 0.6, 'ETH': 0.7, 'SOL': 0.5, 'ADA': 0.8}
+        }
         
-        asset_values = sum(asset['value_usd'] for asset in self.portfolio['assets'].values())
-        exposure = (asset_values / total_value) * 100
-        return exposure
+        # Calculate the average correlation with assets in the portfolio
+        correlations = []
+        
+        for existing_crypto in self.portfolio:
+            if existing_crypto != crypto and crypto in simulated_correlations:
+                correlation = simulated_correlations.get(crypto, {}).get(existing_crypto, 0.5)
+                correlations.append(correlation)
+        
+        avg_correlation = sum(correlations) / len(correlations) if correlations else 0
+        
+        # Calculate the risk score based on correlation
+        risk_score = min(avg_correlation / self.risk_thresholds['correlation'], 1.0)
+        
+        return risk_score
     
     def _calculate_value_at_risk(self) -> float:
         """
@@ -585,191 +495,107 @@ class RiskManagementAgent:
             Value at Risk as a percentage of portfolio value
         """
         # In a real implementation, this would use historical price data
-        # For simulation, we'll return a simplified VaR based on portfolio composition
+        # and calculate VaR using statistical methods
         
-        # Get portfolio volatility
-        portfolio_volatility = self._calculate_portfolio_volatility()
+        # For this prototype, we'll use a simplified approach
+        total_value = self._calculate_portfolio_value()
         
-        # Calculate VaR (95% confidence)
-        confidence_factor = 1.65  # Approximately 95% confidence for normal distribution
-        var = portfolio_volatility * confidence_factor
+        # Calculate a weighted average of asset volatilities
+        weighted_volatility = 0
+        
+        for crypto, details in self.portfolio.items():
+            current_price = self._get_current_price(crypto)
+            value = details['quantity'] * current_price
+            weight = value / total_value if total_value > 0 else 0
+            
+            # Get volatility for this asset
+            volatility = self._assess_volatility_risk(crypto) * self.risk_thresholds['volatility']
+            weighted_volatility += weight * volatility
+        
+        # Simplified VaR calculation (assuming normal distribution, 95% confidence)
+        var = 1.645 * weighted_volatility
         
         return var
     
-    def _calculate_portfolio_volatility(self) -> float:
+    def _calculate_portfolio_value(self) -> float:
         """
-        Calculate the volatility of the portfolio.
+        Calculate the total value of the portfolio.
         
         Returns:
-            Portfolio volatility (0-1)
+            Total portfolio value
         """
-        # In a real implementation, this would use historical price data
-        # For simulation, we'll calculate a weighted average of asset volatilities
-        total_value = self.portfolio['total_value_usd']
-        if total_value == 0:
-            return 0.05  # Default low volatility
+        total_value = 0
         
+        for crypto, details in self.portfolio.items():
+            current_price = self._get_current_price(crypto)
+            value = details['quantity'] * current_price
+            total_value += value
+        
+        return total_value
+    
+    def _calculate_portfolio_volatility(self) -> float:
+        """
+        Calculate the overall volatility of the portfolio.
+        
+        Returns:
+            Portfolio volatility
+        """
+        # In a real implementation, this would use historical returns
+        # and calculate the standard deviation
+        
+        # For this prototype, we'll use a simplified approach
+        total_value = self._calculate_portfolio_value()
+        
+        # Calculate a weighted average of asset volatilities
         weighted_volatility = 0
-        for asset, data in self.portfolio['assets'].items():
-            asset_volatility = self._get_asset_volatility(asset)
-            weight = data['value_usd'] / total_value
-            weighted_volatility += asset_volatility * weight
+        
+        for crypto, details in self.portfolio.items():
+            current_price = self._get_current_price(crypto)
+            value = details['quantity'] * current_price
+            weight = value / total_value if total_value > 0 else 0
+            
+            # Get volatility for this asset
+            volatility = self._assess_volatility_risk(crypto) * self.risk_thresholds['volatility']
+            weighted_volatility += weight * volatility
         
         return weighted_volatility
     
-    def _get_asset_volatility(self, asset: str) -> float:
+    def _get_current_price(self, crypto: str) -> float:
         """
-        Get the volatility of a specific asset.
+        Get the current price of a cryptocurrency.
+        In a real implementation, this would fetch from market data.
         
         Args:
-            asset: The asset to get volatility for
+            crypto: The cryptocurrency
             
         Returns:
-            Asset volatility (0-1)
+            Current price
         """
-        # In a real implementation, this would use historical price data
-        # For simulation, we'll use some predefined values or generate them
-        volatility_map = {
-            'BTC': 0.25,
-            'ETH': 0.30,
-            'SOL': 0.40,
-            'ADA': 0.35,
-            'DOT': 0.38
+        # For this prototype, we'll use simplified price estimates
+        base_prices = {
+            'BTC': 50000,
+            'ETH': 3000,
+            'SOL': 100,
+            'ADA': 1,
+            'DOT': 20
         }
         
-        return volatility_map.get(asset, 0.35)  # Default to 0.35
+        return base_prices.get(crypto, 100)
     
-    def _calculate_asset_correlation(self) -> float:
+    def _update_risk_metrics(self):
         """
-        Calculate the average correlation between assets in the portfolio.
-        
-        Returns:
-            Average correlation (0-1)
+        Update all risk metrics for the portfolio.
         """
-        # In a real implementation, this would use historical price data
-        # For simulation, we'll return a fixed value
-        return 0.6  # Moderate correlation
-    
-    def _get_asset_correlation(self, asset: str) -> float:
-        """
-        Get the correlation of an asset with the rest of the portfolio.
-        
-        Args:
-            asset: The asset to get correlation for
-            
-        Returns:
-            Correlation (0-1)
-        """
-        # In a real implementation, this would use historical price data
-        # For simulation, we'll use some predefined values
-        correlation_map = {
-            'BTC': 0.7,
-            'ETH': 0.75,
-            'SOL': 0.65,
-            'ADA': 0.6,
-            'DOT': 0.65
+        self.risk_metrics = {
+            'value_at_risk': self._calculate_value_at_risk(),
+            'portfolio_value': self._calculate_portfolio_value(),
+            'volatility': self._calculate_portfolio_volatility(),
+            'updated_at': datetime.utcnow().isoformat()
         }
-        
-        return correlation_map.get(asset, 0.6)  # Default to 0.6
-    
-    def _calculate_sharpe_ratio(self) -> float:
-        """
-        Calculate the Sharpe Ratio for the portfolio.
-        
-        Returns:
-            Sharpe Ratio
-        """
-        # In a real implementation, this would use historical returns
-        # For simulation, we'll return a fixed value
-        return 1.2  # Decent Sharpe Ratio
-    
-    def _determine_risk_level(self, metrics: Dict[str, float], alerts: List[Dict[str, Any]]) -> str:
-        """
-        Determine the overall risk level of the portfolio.
-        
-        Args:
-            metrics: Dictionary of risk metrics
-            alerts: List of risk alerts
-            
-        Returns:
-            Risk level (low, medium, high, extreme)
-        """
-        # Count the number and severity of alerts
-        num_alerts = len(alerts)
-        
-        # Check for specific high-risk metrics
-        var = metrics.get('var', 0)
-        var_threshold = self.risk_settings.get('var', {}).get('threshold', 0.05)
-        
-        exposure = metrics.get('exposure', 0)
-        max_exposure = self.risk_settings.get('max_exposure_percent', {}).get('total', 80)
-        
-        volatility = metrics.get('volatility', 0)
-        vol_threshold = self.risk_settings.get('market_risk', {}).get('volatility_threshold', 0.3)
-        
-        # Determine risk level based on metrics and alerts
-        if var > var_threshold * 2 or exposure > max_exposure * 1.2 or num_alerts >= 3:
-            return "extreme"
-        elif var > var_threshold * 1.5 or exposure > max_exposure * 1.1 or num_alerts >= 2:
-            return "high"
-        elif var > var_threshold or exposure > max_exposure * 0.8 or num_alerts >= 1:
-            return "medium"
-        else:
-            return "low"
-    
-    async def _trigger_emergency_protocols(self):
-        """
-        Trigger emergency protocols for extreme risk situations.
-        
-        This might include:
-        - Automatically reducing high-risk positions
-        - Setting up stop-loss orders
-        - Notifying administrators
-        """
-        self.logger.warning("EMERGENCY PROTOCOL: Extreme risk detected!")
-        
-        # In a real implementation, this would execute risk reduction trades
-        # For this prototype, we'll just log the emergency and simulate actions
-        
-        # Find the highest exposure assets
-        high_exposure_assets = []
-        for asset, data in self.portfolio['assets'].items():
-            exposure = (data['value_usd'] / self.portfolio['total_value_usd']) * 100
-            if exposure > 20:  # Assets with >20% exposure
-                high_exposure_assets.append((asset, exposure, data['quantity']))
-        
-        # Sort by exposure (highest first)
-        high_exposure_assets.sort(key=lambda x: x[1], reverse=True)
-        
-        # Simulate emergency actions
-        for asset, exposure, quantity in high_exposure_assets:
-            self.logger.warning(f"Emergency action: Reduce {asset} position (current exposure: {exposure:.2f}%)")
-            
-            # In a real implementation, this would send a trade execution request
-            # For simulation, we'll just log it
-            # 
-            # Example code for real implementation:
-            # if 'trade_execution_agent' in self.config.get('a2a', {}):
-            #     trade_agent_url = self.config['a2a']['trade_execution_agent']
-            #     try:
-            #         trade_agent = self.a2a_client.discover_agent(trade_agent_url)
-            #         self.a2a_client.create_task(
-            #             agent_name=trade_agent['name'],
-            #             capability='execute_trade',
-            #             parameters={
-            #                 'exchange': 'binance',
-            #                 'crypto_pair': f"{asset}/USD",
-            #                 'action': 'sell',
-            #                 'order_type': 'market',
-            #                 'quantity': quantity * 0.5  # Sell half the position
-            #             }
-            #         )
-            #     except Exception as e:
-            #         self.logger.error(f"Failed to execute emergency trade: {e}")
     
     async def start(self, host: str = "0.0.0.0", port: int = 8003):
         """
-        Start the Risk Management Agent server.
+        Start the Risk Management Agent.
         
         Args:
             host: Host to bind the server to
@@ -782,12 +608,13 @@ class RiskManagementAgent:
         async def root():
             return {"status": "ok", "agent": self.name, "version": self.version}
         
-        self.logger.info(f"Starting Risk Management Agent server on {host}:{port}")
+        self.logger.info(f"Starting Risk Management Agent on {host}:{port}")
         
-        # Configure and start the server
-        config = uvicorn.Config(app, host=host, port=port)
-        server = uvicorn.Server(config)
-        await server.serve()
+        # Start a background task to periodically monitor risk
+        # This would be implemented in a real system
+        
+        # Start the server
+        uvicorn.run(app, host=host, port=port)
 
 
 async def main():
@@ -816,4 +643,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main()) 

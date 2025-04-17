@@ -76,7 +76,7 @@ The modular nature of the system enables easy development of custom trading stra
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/tonycai/smart_crypto_portfolio_manager.git
+   git clone https://github.com/yourusername/smart_crypto_portfolio_manager.git
    cd smart_crypto_portfolio_manager
    ```
 
@@ -119,7 +119,9 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-## Project Structure
+## Development
+
+### Project Structure
 
 - `agents/`: Contains the implementation of each specialized agent
   - `market_analysis/`: Market Analysis Agent implementation
@@ -129,6 +131,19 @@ docker-compose logs -f
 - `a2a/`: Implementation of the Agent-to-Agent communication protocol
 - `config/`: Configuration files for each agent
 - `common/`: Shared utilities and code
+
+### Adding New Agents
+
+1. Create a new directory in `agents/`
+2. Create an `agent.json` file defining the agent's capabilities
+3. Implement the agent's functionality
+4. Add the agent to `docker-compose.yml`
+
+### Extending Agent Capabilities
+
+1. Add new capability definitions to the agent's `agent.json` file
+2. Implement the corresponding handler functions
+3. Register the handlers in the agent's initialization
 
 ## API Documentation
 
@@ -151,9 +166,13 @@ Each agent exposes a RESTful API following the A2A protocol:
 - Authentication is required for task creation
 - Risk limits prevent catastrophic trading errors
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 ## License
 
-MIT License
+[Your License Here]
 
 ## Disclaimer
 

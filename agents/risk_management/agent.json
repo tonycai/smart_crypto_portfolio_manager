@@ -1,13 +1,13 @@
 {
   "name": "Risk Management Agent",
-  "description": "Monitors portfolio risk exposure, assesses risks of potential trades, and suggests risk mitigation actions.",
+  "description": "Monitors the portfolio's overall risk exposure, assesses risk associated with potential trades, and triggers actions to mitigate risk.",
   "version": "1.0.0",
   "author": "Smart Crypto Portfolio Manager Team",
   "contact": "example@smartcrypto.com",
   "capabilities": [
     {
       "name": "assess_trade_risk",
-      "description": "Assesses the risk of a proposed trade based on current portfolio exposure",
+      "description": "Assesses the risk of a proposed trade in the context of the current portfolio",
       "parameters": {
         "type": "object",
         "properties": {
@@ -18,15 +18,15 @@
           "action": {
             "type": "string",
             "enum": ["buy", "sell"],
-            "description": "Whether to buy or sell"
+            "description": "Whether the trade is a buy or sell"
           },
           "quantity": {
             "type": "number",
-            "description": "The quantity to trade"
+            "description": "The quantity to buy or sell"
           },
           "price": {
             "type": "number",
-            "description": "The proposed execution price"
+            "description": "The expected execution price"
           }
         },
         "required": ["crypto_pair", "action", "quantity", "price"]
@@ -36,19 +36,19 @@
         "properties": {
           "risk_score": {
             "type": "number",
-            "description": "Risk score from 0 (no risk) to 100 (extreme risk)"
+            "description": "The risk score (0-100, higher means more risk)"
           },
           "approval": {
             "type": "boolean",
-            "description": "Whether the trade is approved based on risk assessment"
+            "description": "Whether the trade is approved from a risk perspective"
           },
           "max_recommended_quantity": {
             "type": "number",
-            "description": "Maximum recommended quantity to maintain acceptable risk levels"
+            "description": "The maximum recommended quantity to trade to stay within risk limits"
           },
           "reasons": {
             "type": "array",
-            "description": "List of reasons explaining the risk assessment",
+            "description": "Reasons for the risk assessment",
             "items": {
               "type": "string"
             }
@@ -58,106 +58,67 @@
     },
     {
       "name": "monitor_portfolio_risk",
-      "description": "Monitors the overall portfolio risk and returns risk metrics",
+      "description": "Monitors the overall portfolio risk and generates alerts if thresholds are exceeded",
       "parameters": {
         "type": "object",
         "properties": {
           "metrics": {
             "type": "array",
-            "description": "List of risk metrics to calculate",
+            "description": "Risk metrics to include",
             "items": {
               "type": "string",
-              "enum": ["var", "exposure", "correlation", "volatility", "sharpe_ratio", "sortino_ratio", "max_drawdown"]
+              "enum": ["value_at_risk", "sharpe_ratio", "exposure", "volatility", "correlation"]
+            }
+          },
+          "threshold_overrides": {
+            "type": "object",
+            "description": "Optional overrides for risk thresholds",
+            "additionalProperties": {
+              "type": "number"
             }
           }
         },
-        "required": ["metrics"]
+        "required": []
       },
       "returns": {
         "type": "object",
         "properties": {
-          "risk_level": {
+          "overall_risk_level": {
             "type": "string",
             "enum": ["low", "medium", "high", "extreme"],
-            "description": "Overall portfolio risk level"
+            "description": "The overall risk level of the portfolio"
           },
           "metrics": {
             "type": "object",
-            "description": "Values for the requested risk metrics"
+            "description": "The calculated risk metrics",
+            "additionalProperties": {
+              "type": "number"
+            }
           },
           "alerts": {
             "type": "array",
-            "description": "List of alerts for metrics that exceed their thresholds",
+            "description": "Risk alerts if thresholds are exceeded",
             "items": {
               "type": "object",
               "properties": {
                 "metric": {
                   "type": "string",
-                  "description": "The metric that exceeds threshold"
+                  "description": "The risk metric that triggered the alert"
                 },
                 "value": {
                   "type": "number",
-                  "description": "Current value of the metric"
+                  "description": "The current value of the metric"
                 },
                 "threshold": {
                   "type": "number",
-                  "description": "Threshold value for the metric"
+                  "description": "The threshold that was exceeded"
                 },
                 "recommendation": {
                   "type": "string",
-                  "description": "Recommended action to mitigate risk"
+                  "description": "Recommended action to mitigate the risk"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    {
-      "name": "update_portfolio",
-      "description": "Updates the portfolio data with a new trade",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "order_id": {
-            "type": "string",
-            "description": "ID of the executed order"
-          },
-          "exchange": {
-            "type": "string",
-            "description": "Exchange where the trade was executed"
-          },
-          "crypto_pair": {
-            "type": "string",
-            "description": "The cryptocurrency trading pair"
-          },
-          "action": {
-            "type": "string",
-            "enum": ["buy", "sell"],
-            "description": "Whether the trade was a buy or sell"
-          },
-          "quantity": {
-            "type": "number",
-            "description": "The quantity traded"
-          },
-          "executed_price": {
-            "type": "number",
-            "description": "The price at which the trade was executed"
-          }
-        },
-        "required": ["order_id", "exchange", "crypto_pair", "action", "quantity", "executed_price"]
-      },
-      "returns": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Whether the portfolio update was successful"
-          },
-          "new_risk_level": {
-            "type": "string",
-            "enum": ["low", "medium", "high", "extreme"],
-            "description": "New overall portfolio risk level after the update"
           }
         }
       }
