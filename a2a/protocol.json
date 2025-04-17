@@ -1,0 +1,168 @@
+{
+  "protocol": "a2a",
+  "version": "v1",
+  "description": "Agent-to-Agent Communication Protocol for Smart Crypto Portfolio Manager",
+  "specification": {
+    "agent_card": {
+      "description": "JSON file describing an agent's capabilities and how to communicate with it",
+      "required_fields": [
+        "name",
+        "description",
+        "version",
+        "capabilities",
+        "endpoint",
+        "supported_protocols"
+      ],
+      "optional_fields": [
+        "author",
+        "contact",
+        "auth_required",
+        "auth_type"
+      ]
+    },
+    "task": {
+      "description": "A unit of work requested from one agent to another",
+      "fields": {
+        "task_id": {
+          "type": "string",
+          "description": "Unique identifier for the task"
+        },
+        "capability": {
+          "type": "string",
+          "description": "The capability being requested"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters for the requested capability"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Priority of the task",
+          "default": "medium"
+        },
+        "callback_url": {
+          "type": "string",
+          "description": "URL for callbacks on task status changes"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed", "failed", "canceled"],
+          "description": "Current status of the task"
+        },
+        "result": {
+          "type": "object",
+          "description": "Result of the completed task"
+        },
+        "error": {
+          "type": "object",
+          "description": "Error details if the task failed"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the task was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the task was last updated"
+        }
+      }
+    },
+    "message": {
+      "description": "Communication between agents related to a task",
+      "fields": {
+        "message_id": {
+          "type": "string",
+          "description": "Unique identifier for the message"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "ID of the task the message relates to"
+        },
+        "from_agent": {
+          "type": "string",
+          "description": "Name or ID of the sending agent"
+        },
+        "to_agent": {
+          "type": "string",
+          "description": "Name or ID of the receiving agent"
+        },
+        "content": {
+          "type": "object",
+          "description": "Content of the message"
+        },
+        "parts": {
+          "type": "array",
+          "description": "Additional parts of the message (e.g., files, images)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "MIME type of the part"
+              },
+              "content": {
+                "type": "string",
+                "description": "Content of the part, possibly base64 encoded"
+              },
+              "filename": {
+                "type": "string",
+                "description": "Optional filename for file parts"
+              }
+            }
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the message was sent"
+        }
+      }
+    },
+    "endpoints": {
+      "task_management": {
+        "create_task": {
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "description": "Create a new task"
+        },
+        "get_task": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{task_id}",
+          "description": "Get details of a specific task"
+        },
+        "update_task": {
+          "method": "PUT",
+          "path": "/api/v1/tasks/{task_id}",
+          "description": "Update a task (e.g., change status)"
+        },
+        "delete_task": {
+          "method": "DELETE",
+          "path": "/api/v1/tasks/{task_id}",
+          "description": "Cancel and delete a task"
+        }
+      },
+      "messaging": {
+        "send_message": {
+          "method": "POST",
+          "path": "/api/v1/tasks/{task_id}/messages",
+          "description": "Send a message related to a task"
+        },
+        "get_messages": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{task_id}/messages",
+          "description": "Get all messages for a task"
+        }
+      },
+      "discovery": {
+        "get_agent_card": {
+          "method": "GET",
+          "path": "/api/v1/agent",
+          "description": "Get the agent card describing capabilities"
+        }
+      }
+    }
+  }
+}
