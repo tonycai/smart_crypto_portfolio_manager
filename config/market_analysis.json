@@ -1,0 +1,30 @@
+{
+  "crypto_pairs_to_monitor": ["BTC/USD", "ETH/USD", "SOL/USD", "ADA/USD", "DOT/USD"],
+  "monitoring_interval_seconds": 60,
+  "indicators": ["rsi", "macd", "bollinger", "ma", "volume"],
+  "exchanges": [
+    {
+      "name": "binance",
+      "api_key": "YOUR_API_KEY_HERE",
+      "api_secret": "YOUR_API_SECRET_HERE",
+      "is_enabled": true
+    },
+    {
+      "name": "coinbase",
+      "api_key": "YOUR_API_KEY_HERE",
+      "api_secret": "YOUR_API_SECRET_HERE",
+      "is_enabled": true
+    }
+  ],
+  "a2a": {
+    "trade_execution_agent": "http://trade-execution-agent:8002",
+    "risk_management_agent": "http://risk-management-agent:8003",
+    "reporting_analytics_agent": "http://reporting-analytics-agent:8004"
+  },
+  "notification": {
+    "enable_email": false,
+    "email_recipients": [],
+    "enable_slack": false,
+    "slack_webhook_url": ""
+  }
+}
