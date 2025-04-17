@@ -73,6 +73,18 @@ class A2AServer:
     def _register_routes(self):
         """Register the API routes for the A2A protocol."""
         
+        # Root endpoint for health check
+        @self.app.get("/")
+        async def root():
+            """Root endpoint that returns basic agent info"""
+            return {
+                "name": self.agent_card.get("name", "Unknown Agent"),
+                "version": self.agent_card.get("version", "1.0.0"),
+                "status": "online",
+                "capabilities": [cap.get("name") for cap in self.agent_card.get("capabilities", [])],
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
         # Agent discovery
         @self.app.get("/api/v1/agent")
         async def get_agent_card():
