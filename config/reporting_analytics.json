@@ -1,0 +1,67 @@
+{
+  "reporting": {
+    "daily_report": {
+      "enabled": true,
+      "time": "23:59",
+      "timezone": "UTC",
+      "metrics": ["portfolio_value", "daily_pnl", "trade_count", "asset_allocation"]
+    },
+    "weekly_report": {
+      "enabled": true,
+      "day": "Friday",
+      "time": "23:59",
+      "timezone": "UTC",
+      "metrics": ["portfolio_value", "weekly_pnl", "trade_count", "win_rate", "asset_allocation", "risk_metrics"]
+    },
+    "monthly_report": {
+      "enabled": true,
+      "day": 1,
+      "time": "00:01",
+      "timezone": "UTC",
+      "metrics": ["portfolio_value", "monthly_pnl", "trade_count", "win_rate", "asset_allocation", "risk_metrics", "performance_analysis"]
+    },
+    "formats": ["json", "csv", "pdf"]
+  },
+  "analytics": {
+    "trade_analytics": {
+      "metrics": ["win_rate", "avg_profit", "avg_loss", "profit_factor", "max_drawdown", "sharpe_ratio", "sortino_ratio", "expectancy"],
+      "trade_breakdown": {
+        "by_asset": true,
+        "by_time_of_day": true,
+        "by_day_of_week": true,
+        "by_strategy": true
+      }
+    },
+    "portfolio_analytics": {
+      "metrics": ["asset_correlation", "volatility", "beta", "alpha", "r_squared", "information_ratio"],
+      "historical_analysis": {
+        "periods": ["day", "week", "month", "quarter", "year"]
+      }
+    },
+    "market_analytics": {
+      "track_benchmark_indices": true,
+      "correlation_analysis": true,
+      "market_sentiment_analysis": false
+    }
+  },
+  "data_storage": {
+    "trade_history_retention_days": 365,
+    "portfolio_snapshot_frequency": "daily",
+    "price_data_granularity": "1h"
+  },
+  "visualization": {
+    "charts": ["line", "bar", "pie", "candlestick", "heatmap"],
+    "default_theme": "light",
+    "include_in_reports": true
+  },
+  "a2a": {
+    "market_analysis_agent": "http://market-analysis-agent:8001",
+    "trade_execution_agent": "http://trade-execution-agent:8002",
+    "risk_management_agent": "http://risk-management-agent:8003"
+  },
+  "export": {
+    "auto_export": false,
+    "export_location": "/data/reports/",
+    "export_formats": ["json", "csv"]
+  }
+}
