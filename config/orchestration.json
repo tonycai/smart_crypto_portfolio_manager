@@ -1,0 +1,171 @@
+{
+  "market_analysis_agent_url": "http://market-analysis-agent:8001",
+  "trade_execution_agent_url": "http://trade-execution-agent:8002",
+  "risk_management_agent_url": "http://risk-management-agent:8003",
+  "reporting_analytics_agent_url": "http://reporting-analytics-agent:8004",
+  "mcp": {
+    "enabled": true,
+    "functions": [
+      {
+        "name": "get_agent_status",
+        "description": "Get the status of all agents or a specific agent",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "agent_name": {
+              "type": "string",
+              "description": "Optional name of a specific agent to check"
+            }
+          }
+        }
+      },
+      {
+        "name": "execute_market_analysis",
+        "description": "Execute market analysis on specified crypto pair",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "crypto_pair": {
+              "type": "string",
+              "description": "Cryptocurrency pair to analyze (e.g., BTC/USD)"
+            },
+            "timeframe": {
+              "type": "string",
+              "description": "Timeframe for analysis (e.g., 1h, 4h, 1d)"
+            },
+            "indicators": {
+              "type": "array",
+              "description": "Technical indicators to use",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["crypto_pair", "timeframe"]
+        }
+      },
+      {
+        "name": "execute_trade",
+        "description": "Execute a cryptocurrency trade",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "exchange": {
+              "type": "string",
+              "description": "Exchange to use (e.g., binance, coinbase)"
+            },
+            "crypto_pair": {
+              "type": "string",
+              "description": "Cryptocurrency pair to trade"
+            },
+            "action": {
+              "type": "string",
+              "enum": ["buy", "sell"],
+              "description": "Trade action"
+            },
+            "order_type": {
+              "type": "string",
+              "enum": ["market", "limit"],
+              "description": "Order type"
+            },
+            "quantity": {
+              "type": "number",
+              "description": "Amount of cryptocurrency to trade"
+            },
+            "price": {
+              "type": "number",
+              "description": "Price for limit orders"
+            }
+          },
+          "required": ["exchange", "crypto_pair", "action", "order_type", "quantity"]
+        }
+      },
+      {
+        "name": "assess_risk",
+        "description": "Assess risk for a trade or the entire portfolio",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "crypto_pair": {
+              "type": "string",
+              "description": "Cryptocurrency pair for trade risk assessment"
+            },
+            "action": {
+              "type": "string",
+              "enum": ["buy", "sell"],
+              "description": "Trade action"
+            },
+            "quantity": {
+              "type": "number",
+              "description": "Amount of cryptocurrency"
+            },
+            "price": {
+              "type": "number",
+              "description": "Proposed price"
+            },
+            "metrics": {
+              "type": "array",
+              "description": "Risk metrics to assess for portfolio risk",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "generate_report",
+        "description": "Generate a performance or portfolio valuation report",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "time_period": {
+              "type": "string",
+              "enum": ["day", "week", "month", "year"],
+              "description": "Time period for performance report"
+            },
+            "include_metrics": {
+              "type": "array",
+              "description": "Metrics to include in the report",
+              "items": {
+                "type": "string"
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": ["json", "pdf", "csv"],
+              "description": "Report output format"
+            },
+            "include_details": {
+              "type": "boolean",
+              "description": "Whether to include detailed information in portfolio valuation"
+            },
+            "valuation_currency": {
+              "type": "string",
+              "description": "Currency for valuation"
+            }
+          }
+        }
+      },
+      {
+        "name": "execute_workflow",
+        "description": "Execute a predefined workflow",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "workflow_name": {
+              "type": "string",
+              "enum": ["market_analysis_to_trade", "risk_assessment", "performance_report", "portfolio_rebalance"],
+              "description": "Name of the workflow to execute"
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Parameters for the workflow"
+            }
+          },
+          "required": ["workflow_name"]
+        }
+      }
+    ]
+  }
+} 

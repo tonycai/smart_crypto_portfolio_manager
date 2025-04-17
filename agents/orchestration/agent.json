@@ -1,0 +1,122 @@
+{
+  "name": "Orchestration Agent",
+  "description": "Manages and coordinates the other agents in the Smart Crypto Portfolio Manager system, providing status monitoring and accepting LLM function calls via MCP protocol.",
+  "version": "1.0.0",
+  "author": "Smart Crypto Portfolio Manager Team",
+  "contact": "example@smartcrypto.com",
+  "capabilities": [
+    {
+      "name": "get_agent_status",
+      "description": "Get the status of all agents or a specific agent",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "agent_name": {
+            "type": "string",
+            "description": "Optional name of a specific agent to check (e.g., 'Market Analysis Agent'). If not provided, status of all agents will be returned."
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "object",
+            "description": "Status information for each agent"
+          }
+        }
+      }
+    },
+    {
+      "name": "execute_workflow",
+      "description": "Execute a predefined workflow across multiple agents",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workflow_name": {
+            "type": "string",
+            "description": "Name of the workflow to execute",
+            "enum": ["market_analysis_to_trade", "risk_assessment", "performance_report", "portfolio_rebalance"]
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Parameters for the workflow"
+          }
+        },
+        "required": ["workflow_name"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "ID of the executed workflow"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status of the workflow execution"
+          }
+        }
+      }
+    },
+    {
+      "name": "execute_llm_function",
+      "description": "Execute a function requested by an LLM via MCP protocol",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "function_name": {
+            "type": "string",
+            "description": "Name of the function to execute"
+          },
+          "arguments": {
+            "type": "object",
+            "description": "Arguments for the function"
+          }
+        },
+        "required": ["function_name"]
+      },
+      "returns": {
+        "type": "object",
+        "description": "Result of the function execution"
+      }
+    },
+    {
+      "name": "get_workflow_status",
+      "description": "Get the status of a workflow",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "ID of the workflow to check"
+          }
+        },
+        "required": ["workflow_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "ID of the workflow"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status of the workflow"
+          },
+          "steps": {
+            "type": "array",
+            "description": "Details of each step in the workflow",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": "http://localhost:8005/api/v1/tasks",
+  "supported_protocols": ["a2a/v1", "mcp/v1"]
+} 

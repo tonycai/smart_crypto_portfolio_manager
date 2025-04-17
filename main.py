@@ -17,6 +17,7 @@ from agents.market_analysis.agent import MarketAnalysisAgent
 from agents.trade_execution.agent import TradeExecutionAgent
 from agents.risk_management.agent import RiskManagementAgent
 from agents.reporting_analytics.agent import ReportingAnalyticsAgent
+from agents.orchestration.agent import OrchestrationAgent
 
 
 async def start_market_analysis_agent(host: str, port: int, config_path: str = None):
@@ -43,6 +44,12 @@ async def start_reporting_analytics_agent(host: str, port: int, config_path: str
     await agent.start(host=host, port=port)
 
 
+async def start_orchestration_agent(host: str, port: int, config_path: str = None):
+    """Start the Orchestration Agent."""
+    agent = OrchestrationAgent(config_path=config_path)
+    await agent.start(host=host, port=port)
+
+
 async def main():
     """Main entry point for the Smart Crypto Portfolio Manager system."""
     parser = argparse.ArgumentParser(description='Start the Smart Crypto Portfolio Manager system')
@@ -61,6 +68,10 @@ async def main():
     parser.add_argument('--reporting-analytics-host', default='0.0.0.0', help='Host for Reporting Analytics Agent')
     parser.add_argument('--reporting-analytics-port', type=int, default=8004, help='Port for Reporting Analytics Agent')
     parser.add_argument('--reporting-analytics-config', help='Config file for Reporting Analytics Agent')
+    
+    parser.add_argument('--orchestration-host', default='0.0.0.0', help='Host for Orchestration Agent')
+    parser.add_argument('--orchestration-port', type=int, default=8005, help='Port for Orchestration Agent')
+    parser.add_argument('--orchestration-config', help='Config file for Orchestration Agent')
     
     parser.add_argument('--log-level', default='INFO', 
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -101,6 +112,11 @@ async def main():
                 host=args.reporting_analytics_host,
                 port=args.reporting_analytics_port,
                 config_path=args.reporting_analytics_config
+            ),
+            start_orchestration_agent(
+                host=args.orchestration_host,
+                port=args.orchestration_port,
+                config_path=args.orchestration_config
             )
         )
     except Exception as e:
