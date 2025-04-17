@@ -1,0 +1,118 @@
+{
+  "name": "Trade Execution Agent",
+  "description": "Executes buy and sell orders on various crypto exchanges based on signals received from other agents.",
+  "version": "1.0.0",
+  "author": "Smart Crypto Portfolio Manager Team",
+  "contact": "example@smartcrypto.com",
+  "capabilities": [
+    {
+      "name": "execute_trade",
+      "description": "Executes a cryptocurrency trade on a specified exchange",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "description": "The exchange to execute the trade on (e.g., 'binance', 'coinbase')"
+          },
+          "crypto_pair": {
+            "type": "string",
+            "description": "The cryptocurrency trading pair (e.g., BTC/USD)"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["buy", "sell"],
+            "description": "Whether to buy or sell"
+          },
+          "order_type": {
+            "type": "string",
+            "enum": ["market", "limit", "stop_limit"],
+            "description": "The type of order to place"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "The quantity to trade"
+          },
+          "price": {
+            "type": "number",
+            "description": "The price for limit orders (optional for market orders)"
+          },
+          "stop_price": {
+            "type": "number",
+            "description": "The stop price for stop-limit orders"
+          }
+        },
+        "required": ["exchange", "crypto_pair", "action", "order_type", "quantity"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Unique identifier for the order"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["filled", "partially_filled", "open", "canceled", "rejected"],
+            "description": "Status of the order"
+          },
+          "executed_price": {
+            "type": "number",
+            "description": "The average price the order was executed at"
+          },
+          "executed_quantity": {
+            "type": "number",
+            "description": "The quantity that was successfully executed"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the execution"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_order_status",
+      "description": "Gets the current status of an order",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "description": "The exchange where the order was placed"
+          },
+          "order_id": {
+            "type": "string",
+            "description": "The ID of the order to check"
+          }
+        },
+        "required": ["exchange", "order_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["filled", "partially_filled", "open", "canceled", "rejected"],
+            "description": "Current status of the order"
+          },
+          "executed_price": {
+            "type": "number",
+            "description": "The average price the order was executed at"
+          },
+          "executed_quantity": {
+            "type": "number",
+            "description": "The quantity that was successfully executed"
+          },
+          "remaining_quantity": {
+            "type": "number",
+            "description": "The quantity that is yet to be executed"
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": "http://localhost:8002/api/v1/tasks",
+  "supported_protocols": ["a2a/v1"]
+}
