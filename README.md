@@ -8,7 +8,7 @@ The Smart Crypto Portfolio Manager is a modular and extensible system that lever
 
 ## System Architecture
 
-![System Architecture](https://via.placeholder.com/800x400?text=Smart+Crypto+Portfolio+Manager+Architecture)
+
 
 The system consists of five main agents:
 
@@ -197,7 +197,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-[Your License Here]
+MIT
 
 ## Disclaimer
 
