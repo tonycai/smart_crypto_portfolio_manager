@@ -90,6 +90,14 @@
               "target_assets": ["BTC", "ETH", "SOL", "AVAX", "ADA"]
             }
           }
+        },
+        {
+          "name": "Get Workflow Status",
+          "description": "Check status of a specific workflow",
+          "function": "get_workflow_status",
+          "arguments": {
+            "workflow_id": "<WORKFLOW_ID>"
+          }
         }
       ],
       "code_snippets": {

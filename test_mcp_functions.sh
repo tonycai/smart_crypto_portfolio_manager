@@ -35,6 +35,14 @@ call_mcp_function "execute_market_analysis" "{\"crypto_pair\": \"BTC/USD\", \"ti
 echo -e "===== Testing assess_risk =====\n"
 call_mcp_function "assess_risk" "{\"portfolio\": {\"BTC\": 0.5, \"ETH\": 0.3, \"SOL\": 0.2}}"
 
+# Test execute_trade
+echo -e "===== Testing execute_trade =====\n"
+call_mcp_function "execute_trade" "{\"crypto_pair\": \"BTC/USD\", \"action\": \"buy\", \"amount\": 0.1}"
+
+# Test generate_report
+echo -e "===== Testing generate_report =====\n"
+call_mcp_function "generate_report" "{\"report_type\": \"performance\", \"timeframe\": \"1w\"}"
+
 # Test execute_workflow
 echo -e "===== Testing execute_workflow (portfolio_rebalance) =====\n"
 call_mcp_function "execute_workflow" "{\"workflow_name\": \"portfolio_rebalance\", \"parameters\": {\"risk_tolerance\": \"medium\", \"target_assets\": [\"BTC\", \"ETH\", \"SOL\"]}}"
