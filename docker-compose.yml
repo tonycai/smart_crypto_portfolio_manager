@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  market-analysis-agent:
+    build:
+      context: .
+      dockerfile: agents/market_analysis/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8001
+    volumes:
+      - ./config/market_analysis.json:/app/config/market_analysis.json
+    networks:
+      - a2a-network
+    restart: unless-stopped
+
+  trade-execution-agent:
+    build:
+      context: .
+      dockerfile: agents/trade_execution/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8002
+    volumes:
+      - ./config/trade_execution.json:/app/config/trade_execution.json
+    networks:
+      - a2a-network
+    restart: unless-stopped
+    depends_on:
+      - market-analysis-agent
+
+  risk-management-agent:
+    build:
+      context: .
+      dockerfile: agents/risk_management/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8003
+    volumes:
+      - ./config/risk_management.json:/app/config/risk_management.json
+    networks:
+      - a2a-network
+    restart: unless-stopped
+    depends_on:
+      - market-analysis-agent
+      - trade-execution-agent
+
+  reporting-analytics-agent:
+    build:
+      context: .
+      dockerfile: agents/reporting_analytics/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - LOG_LEVEL=INFO
+      - HOST=0.0.0.0
+      - PORT=8004
+    volumes:
+      - ./config/reporting_analytics.json:/app/config/reporting_analytics.json
+    networks:
+      - a2a-network
+    restart: unless-stopped
+    depends_on:
+      - market-analysis-agent
+      - trade-execution-agent
+      - risk-management-agent
+
+networks:
+  a2a-network:
+    driver: bridge
