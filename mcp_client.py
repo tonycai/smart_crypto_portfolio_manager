@@ -52,7 +52,8 @@ class MCPClient:
     
     def get_all_agents_status(self) -> Dict[str, Any]:
         """Get status of all agents"""
-        return self.call_function("get_all_agents_status", {})
+        # Get all agents by not specifying a specific agent
+        return self.call_function("get_agent_status", {})
     
     def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
         """Get status of a specific agent"""
@@ -79,6 +80,14 @@ class MCPClient:
                 return {"status": "unhealthy", "details": response.text}
         except Exception as e:
             return {"status": "error", "details": str(e)}
+    
+    def list_available_functions(self) -> Dict[str, Any]:
+        """List all available functions"""
+        # Make an intentionally invalid request to get the list of available functions
+        result = self.call_function("__list_functions", {})
+        if "available_functions" in result:
+            return {"functions": result["available_functions"]}
+        return {"error": "Could not retrieve available functions"}
 
 
 def main():
@@ -113,6 +122,9 @@ def main():
     # Health check
     subparsers.add_parser("health", help="Check health of the server")
     
+    # List available functions
+    subparsers.add_parser("functions", help="List available functions")
+    
     args = parser.parse_args()
     
     client = MCPClient(args.server, args.api_key)
@@ -131,6 +143,8 @@ def main():
         result = client.call_function(args.function_name, arguments)
     elif args.command == "health":
         result = client.run_health_check()
+    elif args.command == "functions":
+        result = client.list_available_functions()
     else:
         parser.print_help()
         return

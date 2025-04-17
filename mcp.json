@@ -1,7 +1,7 @@
 {
   "client_config": {
     "api_version": "v1",
-    "server_url": "http://localhost:8000",
+    "server_url": "http://localhost:8005",
     "endpoints": {
       "function": "/api/v1/mcp/function",
       "agent_status": "/api/v1/mcp/status/agent",
@@ -26,43 +26,69 @@
         {
           "name": "Get All Agents Status",
           "description": "Retrieve status of all agents in the system",
-          "function_name": "get_all_agents_status",
+          "function": "get_agent_status",
           "arguments": {}
         },
         {
           "name": "Get Agent Status",
           "description": "Retrieve status of a specific agent",
-          "function_name": "get_agent_status",
+          "function": "get_agent_status",
           "arguments": {
-            "agent_id": "<AGENT_ID>"
+            "agent_name": "<AGENT_NAME>"
+          }
+        },
+        {
+          "name": "Execute Market Analysis",
+          "description": "Run market analysis on crypto pair",
+          "function": "execute_market_analysis",
+          "arguments": {
+            "crypto_pair": "BTC/USD",
+            "timeframe": "4h"
+          }
+        },
+        {
+          "name": "Execute Trade",
+          "description": "Execute a trade",
+          "function": "execute_trade",
+          "arguments": {
+            "crypto_pair": "BTC/USD",
+            "action": "buy",
+            "amount": 0.1,
+            "price": null
+          }
+        },
+        {
+          "name": "Assess Risk",
+          "description": "Assess portfolio risk",
+          "function": "assess_risk",
+          "arguments": {
+            "portfolio": {
+              "BTC": 0.5,
+              "ETH": 0.3,
+              "SOL": 0.2
+            }
+          }
+        },
+        {
+          "name": "Generate Report",
+          "description": "Generate portfolio report",
+          "function": "generate_report",
+          "arguments": {
+            "report_type": "performance",
+            "timeframe": "1w"
           }
         },
         {
           "name": "Execute Portfolio Optimization",
           "description": "Run portfolio optimization workflow",
-          "function_name": "execute_workflow",
+          "function": "execute_workflow",
           "arguments": {
             "workflow_name": "portfolio_rebalance",
             "parameters": {
               "risk_tolerance": "medium",
               "investment_horizon": "medium",
-              "target_assets": ["BTC", "ETH", "SOL", "AVAX", "ADA"],
-              "initial_allocation": {
-                "BTC": 0.35,
-                "ETH": 0.25,
-                "SOL": 0.15,
-                "AVAX": 0.15,
-                "ADA": 0.10
-              }
+              "target_assets": ["BTC", "ETH", "SOL", "AVAX", "ADA"]
             }
-          }
-        },
-        {
-          "name": "Get Workflow Status",
-          "description": "Check status of a specific workflow",
-          "function_name": "get_workflow_status",
-          "arguments": {
-            "workflow_id": "<WORKFLOW_ID>"
           }
         }
       ],
@@ -71,19 +97,19 @@
           {
             "name": "Basic MCP Client",
             "description": "Basic client for MCP interactions",
-            "code": "import requests\n\ndef call_mcp_function(function_name, arguments):\n    url = 'http://localhost:8000/api/v1/mcp/function'\n    data = {\n        'function_name': function_name,\n        'arguments': arguments\n    }\n    response = requests.post(url, json=data)\n    return response.json()"
+            "code": "import requests\n\ndef call_mcp_function(function_name, arguments):\n    url = 'http://localhost:8005/api/v1/mcp/function'\n    data = {\n        'function': function_name,\n        'arguments': arguments\n    }\n    response = requests.post(url, json=data)\n    return response.json()"
           },
           {
             "name": "Get All Agents",
             "description": "Retrieve all agents status",
-            "code": "import requests\n\nurl = 'http://localhost:8000/api/v1/mcp/function'\ndata = {\n    'function_name': 'get_all_agents_status',\n    'arguments': {}\n}\nresponse = requests.post(url, json=data)\nprint(response.json())"
+            "code": "import requests\n\nurl = 'http://localhost:8005/api/v1/mcp/function'\ndata = {\n    'function': 'get_agent_status',\n    'arguments': {}\n}\nresponse = requests.post(url, json=data)\nprint(response.json())"
           }
         ],
         "javascript": [
           {
             "name": "Fetch MCP Function",
             "description": "Fetch API call to MCP function endpoint",
-            "code": "async function callMcpFunction(functionName, arguments) {\n  const response = await fetch('http://localhost:8000/api/v1/mcp/function', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify({\n      function_name: functionName,\n      arguments: arguments\n    })\n  });\n  return response.json();\n}"
+            "code": "async function callMcpFunction(functionName, arguments) {\n  const response = await fetch('http://localhost:8005/api/v1/mcp/function', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify({\n      function: functionName,\n      arguments: arguments\n    })\n  });\n  return response.json();\n}"
           }
         ]
       }
