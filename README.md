@@ -1,6 +1,6 @@
 # Smart Crypto Portfolio Manager
 
-A sophisticated multi-agent system for intelligent cryptocurrency portfolio management using the Google Agent-to-Agent (A2A) communication protocol.
+A sophisticated multi-agent system for intelligent cryptocurrency portfolio management using the Agent-to-Agent (A2A) communication protocol.
 
 ## Overview
 
@@ -10,21 +10,29 @@ The Smart Crypto Portfolio Manager is a modular and extensible system that lever
 
 ![System Architecture](https://via.placeholder.com/800x400?text=Smart+Crypto+Portfolio+Manager+Architecture)
 
-The system consists of four main agents:
+The system consists of five main agents:
 
 1. **Market Analysis Agent**: Monitors crypto markets, analyzes trends, and identifies trading opportunities.
 2. **Trade Execution Agent**: Executes buy/sell orders on various crypto exchanges.
 3. **Risk Management Agent**: Monitors portfolio risk exposure and suggests risk mitigation actions.
 4. **Reporting and Analytics Agent**: Generates reports on trading performance and portfolio valuation.
+5. **Orchestration Agent**: Manages the coordination of all agents, provides status monitoring, and accepts LLM function calls via the MCP protocol.
 
 ### Agent Communication
 
-Agents communicate using the Agent-to-Agent (A2A) protocol, which provides:
+Agents communicate using two protocols:
 
+#### Agent-to-Agent (A2A) Protocol
 - Agent discovery through agent cards (JSON files describing capabilities)
 - Task-based interaction model
 - Structured JSON messages
 - Secure and reliable communication
+
+#### Machine-Callable Protocol (MCP)
+- The Orchestration Agent implements the MCP protocol for LLM function calls
+- Allows external AI systems to interact with the platform
+- Structured JSON schemas for function definitions
+- Streamlined function calling interface
 
 ## Use Cases
 
@@ -55,14 +63,24 @@ The Reporting and Analytics Agent automatically generates reports on:
 3. Risk metrics and exposure analysis
 4. Trade statistics and execution quality
 
-### Custom Strategy Development
+### Workflow Orchestration and System Monitoring
 
-The modular nature of the system enables easy development of custom trading strategies:
+The Orchestration Agent provides centralized control and monitoring:
 
-1. Implement new technical indicators in the Market Analysis Agent
-2. Develop specialized risk models in the Risk Management Agent
-3. Create custom reporting templates in the Reporting and Analytics Agent
-4. Configure agent interaction patterns for complex trading workflows
+1. Executes predefined workflows across multiple agents
+2. Monitors the status of all agents in the system
+3. Provides a unified interface for LLM function calls via MCP
+4. Tracks workflow execution progress
+
+### LLM Integration via MCP Protocol
+
+External AI systems can interact with the platform through the MCP protocol:
+
+1. Query agent status and system health
+2. Execute market analysis and trades
+3. Assess portfolio risk
+4. Generate performance reports
+5. Execute multi-agent workflows
 
 ## Setup and Installation
 
@@ -84,6 +102,7 @@ The modular nature of the system enables easy development of custom trading stra
    - Edit the configuration files in the `config/` directory
    - Set your API keys in `config/trade_execution.json`
    - Adjust risk parameters in `config/risk_management.json`
+   - Configure MCP functions in `config/orchestration.json`
 
 3. Build and start the containers:
    ```bash
@@ -101,6 +120,7 @@ Each agent runs in its own Docker container, making deployment and scaling easy:
 - **Trade Execution Agent**: Runs on port 8002
 - **Risk Management Agent**: Runs on port 8003
 - **Reporting and Analytics Agent**: Runs on port 8004
+- **Orchestration Agent**: Runs on port 8005
 
 ### Scaling
 
@@ -128,6 +148,7 @@ docker-compose logs -f
   - `trade_execution/`: Trade Execution Agent implementation
   - `risk_management/`: Risk Management Agent implementation
   - `reporting_analytics/`: Reporting and Analytics Agent implementation
+  - `orchestration/`: Orchestration Agent implementation
 - `a2a/`: Implementation of the Agent-to-Agent communication protocol
 - `config/`: Configuration files for each agent
 - `common/`: Shared utilities and code
@@ -158,6 +179,10 @@ Each agent exposes a RESTful API following the A2A protocol:
 - **Messaging**:
   - Send Message: `POST /api/v1/tasks/{task_id}/messages`
   - Get Messages: `GET /api/v1/tasks/{task_id}/messages`
+
+The Orchestration Agent also implements the MCP protocol:
+
+- **LLM Function Calls**: `POST /api/v1/mcp/function`
 
 ## Security Considerations
 

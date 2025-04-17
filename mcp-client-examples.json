@@ -1,0 +1,73 @@
+{
+  "examples": [
+    {
+      "description": "Get status of all agents",
+      "request": {
+        "function_name": "get_all_agents_status",
+        "arguments": {}
+      },
+      "endpoint": "/api/v1/mcp/function"
+    },
+    {
+      "description": "Get status of a specific agent",
+      "request": {
+        "function_name": "get_agent_status",
+        "arguments": {
+          "agent_id": "market_data_agent"
+        }
+      },
+      "endpoint": "/api/v1/mcp/function"
+    },
+    {
+      "description": "Execute a market analysis workflow",
+      "request": {
+        "function_name": "execute_workflow",
+        "arguments": {
+          "workflow_name": "market_analysis_and_trade",
+          "parameters": {
+            "crypto_pair": "BTC/USD",
+            "timeframe": "4h",
+            "risk_level": "medium"
+          }
+        }
+      },
+      "endpoint": "/api/v1/mcp/function"
+    },
+    {
+      "description": "Get workflow status",
+      "request": {
+        "function_name": "get_workflow_status",
+        "arguments": {
+          "workflow_id": "workflow-12345-6789"
+        }
+      },
+      "endpoint": "/api/v1/mcp/function"
+    },
+    {
+      "description": "Execute portfolio optimization workflow",
+      "request": {
+        "function_name": "execute_workflow",
+        "arguments": {
+          "workflow_name": "portfolio_rebalance",
+          "parameters": {
+            "risk_tolerance": "medium",
+            "investment_horizon": "medium",
+            "target_assets": ["BTC", "ETH", "SOL", "AVAX", "ADA"],
+            "initial_allocation": {
+              "BTC": 0.35,
+              "ETH": 0.25,
+              "SOL": 0.15,
+              "AVAX": 0.15,
+              "ADA": 0.10
+            }
+          }
+        }
+      },
+      "endpoint": "/api/v1/mcp/function"
+    }
+  ],
+  "usage": {
+    "curl_example": "curl -X POST http://localhost:8000/api/v1/mcp/function -H \"Content-Type: application/json\" -d '{\"function_name\": \"get_all_agents_status\", \"arguments\": {}}'",
+    "python_example": "import requests\n\nurl = 'http://localhost:8000/api/v1/mcp/function'\ndata = {\n    'function_name': 'get_all_agents_status',\n    'arguments': {}\n}\nresponse = requests.post(url, json=data)\nprint(response.json())"
+  }
+} 

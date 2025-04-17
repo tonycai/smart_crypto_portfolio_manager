@@ -222,3 +222,76 @@
 - Other agents should handle the temporary unavailability gracefully
 - When the agent recovers, it should resume processing tasks
 - No data or task state should be lost during the recovery process
+
+## 7. Orchestration Agent and MCP Protocol
+
+### Agent Status Monitoring
+
+**Scenario 7.1: Monitoring Status of All Agents**
+
+**Given** the Orchestration Agent is running and connected to the network  
+**When** a user or external system requests the status of all agents  
+**Then** the Orchestration Agent should:
+- Return the operational status of each agent (active, inactive, error)
+- Include the last heartbeat timestamp for each agent
+- Provide a summary of the overall system health
+
+### Workflow Execution
+
+**Scenario 7.2: Executing a Predefined Workflow**
+
+**Given** the Orchestration Agent is running with defined workflows  
+**When** it receives a request to execute a workflow named "market_analysis_and_trade"  
+**Then** the agent should:
+- Create and manage all necessary tasks across appropriate agents
+- Track the progress of the workflow
+- Return a unique workflow_id
+- Allow the workflow status to be queried using this ID
+
+### MCP Protocol Function Calls
+
+**Scenario 7.3: Handling Function Call via MCP Protocol**
+
+**Given** the Orchestration Agent is running with MCP protocol enabled  
+**When** an external LLM makes a function call via HTTP to `/api/v1/mcp/function` with:
+```json
+{
+  "function_name": "get_agent_status",
+  "arguments": {}
+}
+```
+**Then** the agent should:
+- Process the request according to MCP protocol
+- Return a properly formatted JSON response with the status of all agents
+- Include appropriate HTTP status codes for success or error cases
+
+**Scenario 7.4: Executing Complex Functions via MCP**
+
+**Given** the Orchestration Agent is running with MCP protocol enabled  
+**When** an external LLM makes a function call to analyze a trading opportunity:
+```json
+{
+  "function_name": "analyze_trading_opportunity",
+  "arguments": {
+    "crypto_pair": "BTC/USD",
+    "timeframe": "4h"
+  }
+}
+```
+**Then** the agent should:
+- Coordinate with the Market Analysis Agent to perform the analysis
+- Return the results in the format specified by the MCP protocol
+- Include any error handling information if the analysis fails
+
+### Workflow Status Tracking
+
+**Scenario 7.5: Tracking Workflow Execution Status**
+
+**Given** the Orchestration Agent has initiated a workflow  
+**When** a user or system requests the status of that workflow using its ID  
+**Then** the agent should return:
+- The current status of the workflow (pending, in_progress, completed, failed)
+- A list of completed steps and their results
+- A list of pending steps
+- Any errors encountered during execution
+- The estimated time to completion (if available)

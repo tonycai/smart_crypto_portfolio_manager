@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Protocol Schema",
+  "description": "Schema for the Model Calling Protocol (MCP) used by the Orchestration Agent",
+  "type": "object",
+  "definitions": {
+    "FunctionCall": {
+      "type": "object",
+      "required": ["function_name", "arguments"],
+      "properties": {
+        "function_name": {
+          "type": "string",
+          "description": "Name of the function to call"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Arguments to pass to the function"
+        }
+      }
+    },
+    "FunctionResponse": {
+      "type": "object",
+      "required": ["status", "result"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["success", "error"],
+          "description": "Status of the function call"
+        },
+        "result": {
+          "description": "Result of the function call, can be any JSON value"
+        },
+        "error": {
+          "type": "object",
+          "description": "Error details if status is 'error'",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Error code"
+            },
+            "message": {
+              "type": "string",
+              "description": "Error message"
+            }
+          }
+        }
+      }
+    },
+    "AgentStatus": {
+      "type": "object",
+      "required": ["agent_id", "status", "last_heartbeat"],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "Unique identifier for the agent"
+        },
+        "agent_type": {
+          "type": "string",
+          "description": "Type of agent (e.g., MarketAnalysis, TradeExecution)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "error"],
+          "description": "Current operational status of the agent"
+        },
+        "last_heartbeat": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last heartbeat from the agent"
+        },
+        "error_details": {
+          "type": "string",
+          "description": "Details of any errors, if status is 'error'"
+        }
+      }
+    },
+    "WorkflowStatus": {
+      "type": "object",
+      "required": ["workflow_id", "status", "steps"],
+      "properties": {
+        "workflow_id": {
+          "type": "string",
+          "description": "Unique identifier for the workflow"
+        },
+        "workflow_name": {
+          "type": "string",
+          "description": "Name of the workflow being executed"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed", "failed"],
+          "description": "Current status of the workflow"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["step_id", "status"],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "description": "Unique identifier for the step"
+              },
+              "step_name": {
+                "type": "string",
+                "description": "Name of the step"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress", "completed", "failed"],
+                "description": "Current status of the step"
+              },
+              "agent_id": {
+                "type": "string",
+                "description": "ID of the agent executing the step"
+              },
+              "start_time": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timestamp when the step started"
+              },
+              "end_time": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timestamp when the step completed"
+              },
+              "result": {
+                "description": "Result of the step, if completed"
+              },
+              "error": {
+                "type": "string",
+                "description": "Error details if the step failed"
+              }
+            }
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the workflow was created"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the workflow was last updated"
+        },
+        "estimated_completion": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Estimated time of completion"
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/mcp/function": {
+      "post": {
+        "description": "Endpoint for executing functions via the MCP protocol",
+        "requestBody": {
+          "$ref": "#/definitions/FunctionCall"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/FunctionResponse"
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/status/agents": {
+      "get": {
+        "description": "Get status of all agents",
+        "responses": {
+          "200": {
+            "type": "object",
+            "properties": {
+              "agents": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AgentStatus"
+                }
+              },
+              "system_health": {
+                "type": "string",
+                "enum": ["healthy", "degraded", "critical"],
+                "description": "Overall system health status"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/status/agent/{agent_id}": {
+      "get": {
+        "description": "Get status of a specific agent",
+        "parameters": {
+          "agent_id": {
+            "type": "string",
+            "description": "ID of the agent to query"
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/AgentStatus"
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/workflow": {
+      "post": {
+        "description": "Create and execute a new workflow",
+        "requestBody": {
+          "type": "object",
+          "required": ["workflow_name"],
+          "properties": {
+            "workflow_name": {
+              "type": "string",
+              "description": "Name of the workflow to execute"
+            },
+            "parameters": {
+              "type": "object",
+              "description": "Parameters for the workflow"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "type": "object",
+            "properties": {
+              "workflow_id": {
+                "type": "string",
+                "description": "Unique ID of the created workflow"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress"],
+                "description": "Initial status of the workflow"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp/workflow/{workflow_id}": {
+      "get": {
+        "description": "Get status of a specific workflow",
+        "parameters": {
+          "workflow_id": {
+            "type": "string",
+            "description": "ID of the workflow to query"
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/WorkflowStatus"
+          }
+        }
+      }
+    }
+  }
+} 
