@@ -48,22 +48,6 @@ class TestAgentToAgentProtocol(unittest.TestCase):
     @patch('requests.post')
     def test_a2a_basic_message_structure(self, mock_post):
         """Test the structure of agent-to-agent messages"""
-        # Configure mock response
-        mock_response = {
-            "message_id": str(uuid.uuid4()),
-            "reference_id": "",
-            "sender": "trade_execution_agent",
-            "receiver": "orchestration_agent",
-            "timestamp": datetime.utcnow().isoformat(),
-            "response_type": "execute_trade_response",
-            "status": "success",
-            "payload": {
-                "order_id": f"ord_{uuid.uuid4().hex[:12]}",
-                "status": "FILLED"
-            }
-        }
-        mock_post.return_value = MockResponse(mock_response)
-        
         # Create a message to send
         message = self.base_message.copy()
         message.update({
@@ -80,6 +64,22 @@ class TestAgentToAgentProtocol(unittest.TestCase):
         
         # Reference the message being sent
         message_id = message["message_id"]
+        
+        # Configure mock response - now referencing the request's message_id
+        mock_response = {
+            "message_id": str(uuid.uuid4()),
+            "reference_id": message_id,  # Set reference_id to the request's message_id
+            "sender": "trade_execution_agent",
+            "receiver": "orchestration_agent",
+            "timestamp": datetime.utcnow().isoformat(),
+            "response_type": "execute_trade_response",
+            "status": "success",
+            "payload": {
+                "order_id": f"ord_{uuid.uuid4().hex[:12]}",
+                "status": "FILLED"
+            }
+        }
+        mock_post.return_value = MockResponse(mock_response)
         
         # Call the trade execution agent
         response = self.send_a2a_message(
