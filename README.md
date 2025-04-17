@@ -1,6 +1,6 @@
 # Smart Crypto Portfolio Manager
 
-A sophisticated multi-agent system for intelligent cryptocurrency portfolio management using the Agent-to-Agent (A2A) communication protocol.
+A sophisticated multi-agent system for intelligent cryptocurrency portfolio management using the Google Agent-to-Agent (A2A) communication protocol.
 
 ## Overview
 
