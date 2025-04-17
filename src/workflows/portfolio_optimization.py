@@ -1,314 +1,266 @@
 """
 Portfolio Optimization Workflow
 
-This workflow handles the end-to-end process of optimizing a cryptocurrency portfolio:
-1. Fetch market data for target assets
-2. Analyze market trends and volatility
-3. Generate investment strategy based on risk tolerance
-4. Optimize portfolio allocation
-5. Prepare trade execution plan
+This workflow orchestrates the process of optimizing a cryptocurrency portfolio
+through multiple steps including data collection, analysis, and strategy generation.
 """
-import logging
-import uuid
-from typing import Dict, Any, List
 
-from src.agents.orchestration_agent import Workflow, WorkflowStep
+import logging
+from typing import Dict, Any, List, Optional
+
+from src.workflows.base_workflow import BaseWorkflow
+from src.workflows import WorkflowStatus
 
 logger = logging.getLogger(__name__)
 
-def get_workflow(parameters: Dict[str, Any]) -> Workflow:
+class PortfolioOptimizationWorkflow(BaseWorkflow):
     """
-    Create a portfolio optimization workflow with the given parameters.
-    This function is required by the orchestration agent to load the workflow.
+    A workflow for optimizing cryptocurrency portfolios.
     
-    Args:
-        parameters (dict): Workflow parameters including:
-            - risk_tolerance: low, medium, high
-            - investment_horizon: short, medium, long
-            - target_assets: list of asset symbols
-            - initial_allocation: current portfolio allocation
-            - preferences: additional preferences for optimization
-            
-    Returns:
-        Workflow: A Workflow object with all steps defined
+    This workflow orchestrates the following steps:
+    1. Fetch market data for target assets
+    2. Analyze market trends and correlations
+    3. Generate investment strategy based on risk profile
+    4. Prepare trade execution plan
+    5. (Optional) Execute trades or provide recommendations
     """
-    logger.info("Creating portfolio optimization workflow")
     
-    # Validate required parameters
-    required_params = ["risk_tolerance", "investment_horizon", "target_assets"]
-    for param in required_params:
-        if param not in parameters:
-            raise ValueError(f"Missing required parameter: {param}")
+    def __init__(
+        self,
+        workflow_id: str = None,
+        parameters: Dict[str, Any] = None
+    ):
+        """
+        Initialize a portfolio optimization workflow
+        
+        Args:
+            workflow_id: Optional workflow ID
+            parameters: Workflow parameters including:
+                - risk_tolerance: Risk tolerance level (low, medium, high)
+                - investment_horizon: Investment horizon in days
+                - target_assets: List of cryptocurrency symbols to include
+                - initial_allocation: Current portfolio allocation
+                - constraints: Any constraints on the optimization
+        """
+        super().__init__(
+            workflow_id=workflow_id,
+            name="Portfolio Optimization",
+            description="Optimize a cryptocurrency portfolio based on risk profile and market data",
+            parameters=parameters or {}
+        )
+        
+        self._validate_parameters()
+        self.define_steps()
+        
+    def _validate_parameters(self) -> None:
+        """Validate the workflow parameters"""
+        required_params = ["risk_tolerance", "investment_horizon", "target_assets"]
+        for param in required_params:
+            if param not in self.parameters:
+                raise ValueError(f"Missing required parameter: {param}")
+        
+        # Validate risk_tolerance
+        valid_risk_levels = ["low", "medium", "high"]
+        if self.parameters["risk_tolerance"] not in valid_risk_levels:
+            raise ValueError(f"Invalid risk_tolerance. Must be one of: {valid_risk_levels}")
+        
+        # Validate investment_horizon
+        try:
+            horizon = int(self.parameters["investment_horizon"])
+            if horizon <= 0:
+                raise ValueError("Investment horizon must be a positive number")
+        except (ValueError, TypeError):
+            raise ValueError("Investment horizon must be a positive number")
+        
+        # Validate target_assets
+        if not isinstance(self.parameters["target_assets"], list) or len(self.parameters["target_assets"]) == 0:
+            raise ValueError("target_assets must be a non-empty list of asset symbols")
     
-    # Create workflow instance
-    workflow_id = f"portfolio-optimization-{uuid.uuid4()}"
-    workflow = Workflow(workflow_id, "Portfolio Optimization", parameters)
-    
-    # Add workflow steps - these match the steps defined in the create_workflow function
-    workflow.add_step("Fetch Market Data", "market-data-agent-001")
-    workflow.add_step("Fetch Historical Prices", "market-data-agent-001")
-    workflow.add_step("Analyze Market Trends", "market-analysis-agent-001")
-    workflow.add_step("Analyze Volatility", "market-analysis-agent-001")
-    workflow.add_step("Analyze Correlations", "market-analysis-agent-001")
-    workflow.add_step("Generate Investment Strategy", "strategy-agent-001")
-    workflow.add_step("Optimize Portfolio", "portfolio-agent-001")
-    workflow.add_step("Prepare Trade Plan", "trade-agent-001")
-    
-    logger.info(f"Created portfolio optimization workflow with ID {workflow_id}")
-    return workflow
+    def define_steps(self) -> None:
+        """Define the workflow steps"""
+        # Step 1: Fetch market data
+        fetch_data_step_id = self.add_step(
+            name="Fetch Market Data",
+            agent_id="market_data_agent",
+            function_name="fetch_market_data",
+            function_args={
+                "symbols": self.parameters["target_assets"],
+                "lookback_days": 30  # Default to 30 days of historical data
+            }
+        )
+        
+        # Step 2: Analyze market trends
+        analyze_trends_step_id = self.add_step(
+            name="Analyze Market Trends",
+            agent_id="analysis_agent",
+            function_name="analyze_market_trends",
+            function_args={
+                "risk_tolerance": self.parameters["risk_tolerance"]
+            },
+            dependencies=[fetch_data_step_id]
+        )
+        
+        # Step 3: Calculate asset correlations
+        correlations_step_id = self.add_step(
+            name="Calculate Asset Correlations",
+            agent_id="analysis_agent",
+            function_name="calculate_correlations",
+            dependencies=[fetch_data_step_id]
+        )
+        
+        # Step 4: Generate investment strategy
+        strategy_step_id = self.add_step(
+            name="Generate Investment Strategy",
+            agent_id="strategy_agent",
+            function_name="generate_strategy",
+            function_args={
+                "risk_tolerance": self.parameters["risk_tolerance"],
+                "investment_horizon": self.parameters["investment_horizon"],
+                "initial_allocation": self.parameters.get("initial_allocation", {})
+            },
+            dependencies=[analyze_trends_step_id, correlations_step_id]
+        )
+        
+        # Step 5: Prepare trade execution plan
+        trade_plan_step_id = self.add_step(
+            name="Prepare Trade Execution Plan",
+            agent_id="trade_planning_agent",
+            function_name="prepare_trade_plan",
+            function_args={
+                "constraints": self.parameters.get("constraints", {})
+            },
+            dependencies=[strategy_step_id]
+        )
+        
+        # Step 6: Execute trades (optional, based on parameters)
+        if self.parameters.get("auto_execute", False):
+            self.add_step(
+                name="Execute Trades",
+                agent_id="execution_agent",
+                function_name="execute_trades",
+                dependencies=[trade_plan_step_id]
+            )
 
-# Function to simulate step execution for demo purposes
-def create_workflow(params):
+def get_workflow(parameters: Dict[str, Any]) -> PortfolioOptimizationWorkflow:
     """
-    Legacy function for compatibility - uses the new get_workflow function.
+    Create a portfolio optimization workflow
     
     Args:
-        params (dict): Workflow parameters
+        parameters: Workflow parameters including:
+            - risk_tolerance: Risk tolerance level (low, medium, high)
+            - investment_horizon: Investment horizon in days
+            - target_assets: List of cryptocurrency symbols to include
+            - initial_allocation: Current portfolio allocation (optional)
+            - constraints: Any constraints on the optimization (optional)
+            - auto_execute: Whether to auto-execute trades (optional, default False)
             
     Returns:
-        dict: Workflow definition with steps, dependencies, and parameters
+        A configured portfolio optimization workflow
     """
-    logger.info("Using legacy create_workflow function")
+    try:
+        workflow = PortfolioOptimizationWorkflow(parameters=parameters)
+        logger.info(f"Created portfolio optimization workflow: {workflow.workflow_id}")
+        return workflow
+    except ValueError as e:
+        logger.error(f"Failed to create portfolio optimization workflow: {str(e)}")
+        raise
+
+def simulate_step_execution(workflow: PortfolioOptimizationWorkflow, step_id: str, result: Any = None) -> None:
+    """
+    Simulate the execution of a workflow step (for testing/demo purposes)
     
-    # Create a workflow using the new method
-    workflow = get_workflow(params)
+    Args:
+        workflow: The workflow instance
+        step_id: ID of the step to simulate
+        result: Optional result to set for the step
+    """
+    step = workflow.steps.get(step_id)
+    if not step:
+        raise ValueError(f"Step {step_id} not found in workflow")
     
-    # Convert to the old format for compatibility
-    workflow_dict = {
+    logger.info(f"Simulating execution of step: {step.name}")
+    
+    step.start()
+    
+    # Generate sample results based on step name if not provided
+    if result is None:
+        if step.name == "Fetch Market Data":
+            result = {
+                "data": {symbol: {"prices": [100 + i for i in range(30)]} for symbol in workflow.parameters["target_assets"]},
+                "timestamp": "2023-09-01T00:00:00Z"
+            }
+        elif step.name == "Analyze Market Trends":
+            result = {
+                "trends": {symbol: {"direction": "up", "strength": 0.8} for symbol in workflow.parameters["target_assets"]},
+                "summary": "Overall positive market sentiment detected"
+            }
+        elif step.name == "Calculate Asset Correlations":
+            assets = workflow.parameters["target_assets"]
+            result = {
+                "correlation_matrix": {a: {b: 0.5 for b in assets} for a in assets},
+                "clusters": [{"assets": assets, "correlation": 0.5}]
+            }
+        elif step.name == "Generate Investment Strategy":
+            result = {
+                "target_allocation": {symbol: 1.0/len(workflow.parameters["target_assets"]) for symbol in workflow.parameters["target_assets"]},
+                "rebalance_frequency": "weekly"
+            }
+        elif step.name == "Prepare Trade Execution Plan":
+            result = {
+                "trades": [{"symbol": symbol, "action": "buy", "amount": 100.0} for symbol in workflow.parameters["target_assets"]],
+                "estimated_cost": 1000.0
+            }
+        elif step.name == "Execute Trades":
+            result = {
+                "executed_trades": [{"symbol": symbol, "action": "buy", "amount": 100.0, "status": "completed"} for symbol in workflow.parameters["target_assets"]],
+                "total_cost": 1050.0
+            }
+        else:
+            result = {"status": "completed"}
+    
+    step.complete(result)
+    logger.info(f"Completed step: {step.name}")
+
+def create_workflow(parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Legacy function to create a workflow in the old format (for compatibility)
+    
+    Args:
+        parameters: Workflow parameters
+    
+    Returns:
+        A dictionary representing the workflow in the old format
+    """
+    # Create the new format workflow
+    workflow = get_workflow(parameters)
+    
+    # Convert to the old format
+    old_format = {
+        "workflow_id": workflow.workflow_id,
         "name": workflow.name,
-        "description": "Optimizes a cryptocurrency portfolio based on market data and risk parameters",
-        "steps": [
-            # Step 1: Fetch market data
-            {
-                "name": "Fetch Market Data",
-                "agent_id": "market-data-agent-001",
-                "function": "fetch_market_data",
-                "parameters": {
-                    "assets": params["target_assets"],
-                    "timeframe": "1d",  # daily data
-                    "limit": 30  # last 30 days
-                },
-                "depends_on": []
-            },
-            
-            # Step 2: Fetch historical prices for volatility analysis
-            {
-                "name": "Fetch Historical Prices",
-                "agent_id": "market-data-agent-001",
-                "function": "fetch_historical_prices",
-                "parameters": {
-                    "assets": params["target_assets"],
-                    "timeframe": "1d",
-                    "limit": 90  # last 90 days for better trend analysis
-                },
-                "depends_on": []
-            },
-            
-            # Step 3: Analyze market trends
-            {
-                "name": "Analyze Market Trends",
-                "agent_id": "market-analysis-agent-001",
-                "function": "analyze_market_trends",
-                "parameters": {
-                    "lookback_period": 30,  # days
-                    "indicators": ["SMA", "EMA", "RSI", "MACD"]
-                },
-                "depends_on": ["Fetch Market Data", "Fetch Historical Prices"]
-            },
-            
-            # Step 4: Analyze volatility
-            {
-                "name": "Analyze Volatility",
-                "agent_id": "market-analysis-agent-001",
-                "function": "analyze_volatility",
-                "parameters": {
-                    "risk_tolerance": params["risk_tolerance"],
-                    "horizon": params["investment_horizon"]
-                },
-                "depends_on": ["Fetch Historical Prices"]
-            },
-            
-            # Step 5: Analyze correlations between assets
-            {
-                "name": "Analyze Correlations",
-                "agent_id": "market-analysis-agent-001",
-                "function": "analyze_correlations",
-                "parameters": {
-                    "method": "pearson"
-                },
-                "depends_on": ["Fetch Historical Prices"]
-            },
-            
-            # Step 6: Generate investment strategy
-            {
-                "name": "Generate Investment Strategy",
-                "agent_id": "strategy-agent-001",
-                "function": "generate_investment_recommendations",
-                "parameters": {
-                    "risk_tolerance": params["risk_tolerance"],
-                    "investment_horizon": params["investment_horizon"],
-                    "considerations": ["Volatility", "Trends", "Correlations"]
-                },
-                "depends_on": ["Analyze Market Trends", "Analyze Volatility", "Analyze Correlations"]
-            },
-            
-            # Step 7: Optimize portfolio allocation
-            {
-                "name": "Optimize Portfolio",
-                "agent_id": "portfolio-agent-001",
-                "function": "optimize_portfolio_allocation",
-                "parameters": {
-                    "initial_allocation": params.get("initial_allocation", {}),
-                    "risk_tolerance": params["risk_tolerance"],
-                    "constraints": params.get("preferences", {}),
-                    "optimization_method": "Modern Portfolio Theory"
-                },
-                "depends_on": ["Generate Investment Strategy"]
-            },
-            
-            # Step 8: Prepare trade execution plan
-            {
-                "name": "Prepare Trade Plan",
-                "agent_id": "trade-agent-001",
-                "function": "prepare_trade_execution",
-                "parameters": {
-                    "current_allocation": params.get("initial_allocation", {}),
-                    "rebalance_threshold": params.get("preferences", {}).get("rebalance_threshold", 0.05)
-                },
-                "depends_on": ["Optimize Portfolio"]
-            }
-        ]
+        "description": workflow.description,
+        "parameters": workflow.parameters,
+        "steps": [],
+        "status": "PENDING",
+        "created_at": workflow.created_at.isoformat()
     }
     
-    return workflow_dict
-
-def simulate_step_execution(step_id, step_params, context):
-    """
-    Simulate execution of a workflow step for demonstration purposes.
+    # Add steps in the old format
+    execution_plan = workflow.get_execution_plan()
+    step_level = 0
     
-    Args:
-        step_id (str): The ID of the step being executed
-        step_params (dict): Parameters for the step
-        context (dict): Execution context including results from previous steps
-        
-    Returns:
-        dict: Simulated results for the step
-    """
-    logger.info(f"Simulating execution of step: {step_id}")
+    for level in execution_plan:
+        for step_id in level:
+            step = workflow.steps[step_id]
+            old_format["steps"].append({
+                "step_id": step.step_id,
+                "name": step.name,
+                "agent_id": step.agent_id,
+                "function": step.function_name,
+                "arguments": step.function_args,
+                "dependencies": step.dependencies,
+                "level": step_level
+            })
+        step_level += 1
     
-    # Get the step name from the context
-    step_name = None
-    for result in context.values():
-        if isinstance(result, dict) and "step_name" in result and result.get("step_id") == step_id:
-            step_name = result["step_name"]
-            break
-    
-    # Default simulated results
-    results = {
-        "status": "completed",
-        "step_id": step_id,
-        "step_name": step_name
-    }
-    
-    # Simulate specific step results based on step name
-    if "Fetch Market Data" in step_id:
-        results["data"] = {
-            "BTC": {"price": 57432.15, "volume": 32541267890, "change_24h": 2.34},
-            "ETH": {"price": 2734.67, "volume": 18762345670, "change_24h": 1.45},
-            "SOL": {"price": 129.56, "volume": 5321456789, "change_24h": 3.67},
-            "AVAX": {"price": 34.78, "volume": 1234567890, "change_24h": -0.23},
-            "ADA": {"price": 0.56, "volume": 987654321, "change_24h": 0.89}
-        }
-        
-    elif "Fetch Historical Prices" in step_id:
-        results["data"] = {
-            "timestamp": ["2023-05-01", "2023-05-02", "2023-05-03"],
-            "prices": {
-                "BTC": [57000, 58000, 57500],
-                "ETH": [2700, 2750, 2720],
-                "SOL": [125, 130, 128],
-                "AVAX": [35, 34, 34.5],
-                "ADA": [0.55, 0.56, 0.56]
-            }
-        }
-        
-    elif "Analyze Market Trends" in step_id:
-        results["trends"] = {
-            "BTC": {"trend": "bullish", "strength": 0.75, "confidence": 0.85},
-            "ETH": {"trend": "bullish", "strength": 0.65, "confidence": 0.75},
-            "SOL": {"trend": "bullish", "strength": 0.80, "confidence": 0.70},
-            "AVAX": {"trend": "neutral", "strength": 0.50, "confidence": 0.65},
-            "ADA": {"trend": "neutral", "strength": 0.45, "confidence": 0.60}
-        }
-        
-    elif "Analyze Volatility" in step_id:
-        results["volatility"] = {
-            "BTC": {"volatility": 0.65, "risk_score": 7.5},
-            "ETH": {"volatility": 0.70, "risk_score": 8.0},
-            "SOL": {"volatility": 0.85, "risk_score": 8.5},
-            "AVAX": {"volatility": 0.75, "risk_score": 7.8},
-            "ADA": {"volatility": 0.60, "risk_score": 7.0}
-        }
-        
-    elif "Analyze Correlations" in step_id:
-        results["correlations"] = {
-            "BTC-ETH": 0.85,
-            "BTC-SOL": 0.70,
-            "BTC-AVAX": 0.65,
-            "BTC-ADA": 0.60,
-            "ETH-SOL": 0.75,
-            "ETH-AVAX": 0.68,
-            "ETH-ADA": 0.63,
-            "SOL-AVAX": 0.72,
-            "SOL-ADA": 0.67,
-            "AVAX-ADA": 0.60
-        }
-        
-    elif "Generate Investment Strategy" in step_id:
-        results["strategy"] = {
-            "overall_market_outlook": "bullish",
-            "recommendations": {
-                "BTC": {"action": "hold", "confidence": 0.85, "rationale": "Strong fundamentals and bullish trend"},
-                "ETH": {"action": "increase", "confidence": 0.80, "rationale": "Upcoming protocol upgrades and growing ecosystem"},
-                "SOL": {"action": "increase", "confidence": 0.75, "rationale": "Strong growth potential and improving network stability"},
-                "AVAX": {"action": "hold", "confidence": 0.65, "rationale": "Neutral trend but strategic ecosystem growth"},
-                "ADA": {"action": "decrease", "confidence": 0.60, "rationale": "Slower development progress compared to competitors"}
-            }
-        }
-        
-    elif "Optimize Portfolio" in step_id:
-        results["optimized_allocation"] = {
-            "BTC": 0.30,
-            "ETH": 0.30,
-            "SOL": 0.20,
-            "AVAX": 0.15,
-            "ADA": 0.05
-        }
-        results["expected_return"] = 0.12
-        results["expected_risk"] = 0.08
-        results["sharpe_ratio"] = 1.5
-        
-    elif "Prepare Trade Plan" in step_id:
-        # Calculate trades based on current allocation and optimized allocation
-        current_allocation = step_params.get("current_allocation", {})
-        if "Optimize Portfolio" in context:
-            optimized_allocation = context["Optimize Portfolio"].get("optimized_allocation", {})
-            
-            trades = []
-            for asset, target in optimized_allocation.items():
-                current = current_allocation.get(asset, 0)
-                if abs(target - current) > 0.02:  # Only trade if difference is significant
-                    action = "buy" if target > current else "sell"
-                    amount = abs(target - current)
-                    trades.append({
-                        "asset": asset,
-                        "action": action,
-                        "amount": round(amount, 2),
-                        "percentage": round(amount * 100, 1)
-                    })
-                    
-            results["trades"] = trades
-            results["estimated_slippage"] = 0.001
-            results["estimated_fees"] = 0.0015
-    
-    return results 
+    return old_format 

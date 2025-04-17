@@ -148,7 +148,7 @@ class OrchestrationAgent:
         self.workflow_modules = {}
         self.function_to_agent: Dict[str, str] = {}  # Maps function names to agent IDs
         
-        # Agent endpoint configuration
+        # Agent endpoint configuration - update to use full endpoint paths
         self.agent_endpoints = {
             "market_analysis_agent": "/api/v1/agent",  # Special endpoint for market analysis
             "default": "/api/agent"  # Default endpoint for other agents
@@ -177,20 +177,46 @@ class OrchestrationAgent:
     
     def register_agent(self, agent_id: str, agent_type: str) -> Dict[str, Any]:
         """Register a new agent in the system or update an existing one"""
-        # Determine endpoint based on agent type
-        endpoint = self.agent_endpoints.get(agent_id, self.agent_endpoints["default"])
+        # Determine endpoint path based on agent id
+        endpoint_path = self.agent_endpoints.get(agent_id, self.agent_endpoints["default"])
         
         if agent_id in self.agents:
-            self.agents[agent_id].update_heartbeat()
-            logger.info(f"Updated existing agent: {agent_id} of type {agent_type} with endpoint {endpoint}")
+            # Update existing agent
+            agent = self.agents[agent_id]
+            if hasattr(agent, "endpoint"):
+                agent.endpoint = endpoint_path
+            else:
+                agent.metadata["endpoint"] = endpoint_path
+                
+            if hasattr(agent, "update_heartbeat"):
+                agent.update_heartbeat()
+                
+            logger.info(f"Updated existing agent: {agent_id} of type {agent_type} with endpoint {endpoint_path}")
         else:
-            agent_status = AgentStatus(agent_id, agent_type)
-            # Store endpoint in agent metadata
-            agent_status.metadata["endpoint"] = endpoint
-            self.agents[agent_id] = agent_status
-            logger.info(f"Registered new agent: {agent_id} of type {agent_type} with endpoint {endpoint}")
+            # Create new agent object - this is simplified for the example
+            # In a real implementation, you'd create a proper Agent instance
+            if isinstance(agent_id, str) and isinstance(agent_type, str):
+                agent = Agent(
+                    id=agent_id,
+                    name=agent_type,
+                    description=f"{agent_type} implementation",
+                    functions=[],  # Would be populated from real agent information
+                    status=AgentStatus.AVAILABLE
+                )
+                
+                # Store the endpoint
+                if hasattr(agent, "endpoint"):
+                    agent.endpoint = endpoint_path
+                else:
+                    agent.metadata["endpoint"] = endpoint_path
+                    
+                self.agents[agent_id] = agent
+                logger.info(f"Registered new agent: {agent_id} of type {agent_type} with endpoint {endpoint_path}")
+            else:
+                logger.error(f"Invalid agent registration parameters: {agent_id}, {agent_type}")
+                return {"status": "error", "message": "Invalid agent parameters"}
         
-        return {"status": "success", "agent_id": agent_id, "endpoint": endpoint}
+        return {"status": "success", "agent_id": agent_id, "endpoint": endpoint_path}
     
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get an agent by ID"""
@@ -207,55 +233,54 @@ class OrchestrationAgent:
             return self.agents.get(agent_id)
         return None
     
-    def execute_function(self, function_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute a function by delegating to the appropriate agent
-        
-        Args:
-            function_name: Name of the function to execute
-            params: Parameters to pass to the function
-            
-        Returns:
-            Result of the function execution
-            
-        Raises:
-            ValueError: If no agent is found for the function or execution fails
-        """
-        agent = self.get_agent_by_function(function_name)
-        if not agent:
-            raise ValueError(f"No agent registered for function: {function_name}")
-        
-        # Update agent status
-        agent.update_status(AgentStatus.BUSY)
-        
+    def execute_function(self, agent_id: str, function_name: str, 
+                        function_args: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a function on an agent and return the results"""
         try:
-            # Determine endpoint to use
-            endpoint = agent.metadata.get("endpoint", self.agent_endpoints.get("default"))
+            # Get the agent object
+            agent = self.get_agent(agent_id)
+            if agent is None:
+                return {"status": "error", "message": f"Agent {agent_id} not found"}
             
-            # In a real implementation, this would communicate with the agent
-            # using the appropriate endpoint
-            logger.info(f"Executing function '{function_name}' on agent '{agent.id}' via endpoint {endpoint}")
+            # Determine the endpoint path to use for this agent
+            endpoint_path = None
             
-            # Simulate agent processing
-            time.sleep(0.2)
+            # Try to get the endpoint from the agent's attributes or metadata
+            if hasattr(agent, "endpoint"):
+                endpoint_path = agent.endpoint
+            elif hasattr(agent, "metadata") and "endpoint" in agent.metadata:
+                endpoint_path = agent.metadata["endpoint"]
+            else:
+                # Fallback to the registered endpoints dictionary
+                endpoint_path = self.agent_endpoints.get(agent_id, self.agent_endpoints["default"])
             
-            # Generate demo result based on function name
-            result = self._simulate_function_result(function_name, params)
+            # Ensure endpoint_path begins with a slash if not already
+            if not endpoint_path.startswith("/"):
+                endpoint_path = f"/{endpoint_path}"
             
-            # Update agent status
-            agent.update_status(AgentStatus.AVAILABLE)
+            # Construct the full URL for the request based on agent identifier
+            # For example: http://localhost:8001/api/v1/agent/{function_name}
+            base_url = f"http://localhost:8001"  # This should be configured or looked up based on agent_id
+            full_url = f"{base_url}{endpoint_path}/{function_name}"
             
+            logger.info(f"Sending request to agent {agent_id} at URL: {full_url}")
+            
+            # TODO: Implement actual HTTP request to the agent's endpoint
+            # Example with requests library:
+            # import requests
+            # response = requests.post(full_url, json=function_args)
+            # return response.json()
+            
+            # For now, we'll simulate a successful response
             return {
-                "status": "success",
-                "result": result,
-                "agent_id": agent.id
+                "status": "success", 
+                "message": f"Function {function_name} executed on agent {agent_id} with args {function_args}",
+                "url_used": full_url
             }
-            
+        
         except Exception as e:
-            # Update agent status to error
-            agent.update_status(AgentStatus.ERROR)
-            logger.error(f"Error executing function '{function_name}': {str(e)}")
-            raise ValueError(f"Function execution failed: {str(e)}")
+            logger.error(f"Error executing function on agent {agent_id}: {str(e)}")
+            return {"status": "error", "message": str(e)}
     
     def _simulate_function_result(self, function_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Simulate result for demo purposes"""
@@ -444,7 +469,7 @@ class OrchestrationAgent:
             # Call the function with the provided arguments
             agent_id = self.function_to_agent[function_name]
             agent = self.agents[agent_id]
-            result = self.execute_function(function_name, arguments)
+            result = self.execute_function(agent_id, function_name, arguments)
             
             # If the result is already formatted as a response, return it directly
             if isinstance(result, dict) and "status" in result:
