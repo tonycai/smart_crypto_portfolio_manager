@@ -1,0 +1,93 @@
+{
+  "name": "Market Analysis Agent",
+  "description": "Continuously monitors real-time crypto market data, analyzes trends, detects patterns, and identifies potential trading opportunities or risks.",
+  "version": "1.0.0",
+  "author": "Smart Crypto Portfolio Manager Team",
+  "contact": "example@smartcrypto.com",
+  "capabilities": [
+    {
+      "name": "market_analysis",
+      "description": "Analyzes crypto market data to identify trends and patterns",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crypto_pair": {
+            "type": "string",
+            "description": "The cryptocurrency trading pair (e.g., BTC/USD)"
+          },
+          "timeframe": {
+            "type": "string",
+            "description": "The timeframe for analysis (e.g., '1h', '4h', '1d')"
+          },
+          "indicators": {
+            "type": "array",
+            "description": "List of technical indicators to include in the analysis",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["crypto_pair", "timeframe"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "trend": {
+            "type": "string",
+            "enum": ["bullish", "bearish", "neutral"],
+            "description": "The identified market trend"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Confidence level in the analysis (0-1)"
+          },
+          "signals": {
+            "type": "array",
+            "description": "List of trading signals identified",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "risk_assessment",
+      "description": "Provides initial risk assessment for potential trades",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "crypto_pair": {
+            "type": "string",
+            "description": "The cryptocurrency trading pair"
+          },
+          "position_size": {
+            "type": "number",
+            "description": "The proposed position size"
+          },
+          "entry_price": {
+            "type": "number",
+            "description": "The proposed entry price"
+          }
+        },
+        "required": ["crypto_pair", "position_size"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "risk_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "extreme"],
+            "description": "The assessed risk level"
+          },
+          "recommendation": {
+            "type": "string",
+            "description": "Recommendation based on risk assessment"
+          }
+        }
+      }
+    }
+  ],
+  "endpoint": "http://localhost:8001/api/v1/tasks",
+  "supported_protocols": ["a2a/v1"]
+}
