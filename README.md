@@ -195,6 +195,13 @@ The Orchestration Agent also implements the MCP protocol:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Feedback and Support
+
+Have suggestions or need help? Feel free to reach out:
+
+- **Telegram**: [@tonyironreal](https://t.me/tonyironreal) - Send your feature requests or report issues
+- **GitHub Issues**: For bug reports and feature requests
+
 ## Donations
 
 If you find this project helpful and would like to support its development, you can donate cryptocurrency to the following addresses:
