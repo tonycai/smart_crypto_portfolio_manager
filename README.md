@@ -127,7 +127,7 @@ External AI systems can interact with the platform through the MCP protocol:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/smart_crypto_portfolio_manager.git
+   git clone https://github.com/tonycai/smart_crypto_portfolio_manager.git
    cd smart_crypto_portfolio_manager
    ```
 
