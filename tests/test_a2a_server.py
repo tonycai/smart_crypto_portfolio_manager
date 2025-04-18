@@ -1,402 +1,353 @@
 """
-Unit tests for the A2A server implementation.
+Unit tests for testing the A2A Server implementation.
 
-These tests validate that the A2A server correctly handles API endpoints, 
-manages tasks, processes messages, and returns appropriate responses.
+This module contains tests to validate the functionality of the A2A server,
+including agent discovery, task management, message handling, and capability
+registration.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, AsyncMock
 import json
+import os
+import tempfile
+from unittest.mock import patch, AsyncMock, MagicMock
 import uuid
 from datetime import datetime
-import asyncio
 
-# FastAPI testing imports
 from fastapi.testclient import TestClient
-from fastapi import status
 
-# Import the server module
-from src.a2a.server import app, process_task, tasks_get, tasks_send_subscribe
+from a2a.server import A2AServer, Task, Message, MessagePart, create_a2a_server
 
 
 class TestA2AServer(unittest.TestCase):
-    """Test cases for the A2A server implementation."""
-    
+    """Test cases for the A2A Server implementation."""
+
     def setUp(self):
-        """Set up test fixtures."""
-        self.client = TestClient(app)
-        
-        # Sample task data
-        self.task_id = str(uuid.uuid4())
-        self.user_message = {
-            "role": "user",
-            "parts": [
+        """Set up test fixtures, creating sample agent card and server instance."""
+        # Create a temporary agent card file
+        self.agent_card = {
+            "name": "TestAgent",
+            "version": "1.0.0",
+            "description": "A test agent for A2A protocol",
+            "endpoint": "http://localhost:8000/api/v1/tasks",
+            "capabilities": [
                 {
-                    "type": "text",
-                    "text": "Analyze BTC market trends"
+                    "name": "test_capability",
+                    "description": "A test capability",
+                    "parameters": {
+                        "param1": {"type": "string", "description": "A test parameter"}
+                    },
+                    "returns": {"type": "object", "description": "Test result"}
                 }
             ]
         }
         
-        # Sample task request
-        self.task_request = {
-            "task_id": self.task_id,
-            "message": self.user_message
-        }
+        # Create a temporary file
+        self.temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+        json.dump(self.agent_card, self.temp_file)
+        self.temp_file.close()
         
-        # Sample completed task
-        self.completed_task = {
-            "task_id": self.task_id,
-            "status": "completed",
-            "messages": [
-                self.user_message,
-                {
-                    "role": "agent",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "text": "BTC is showing a bullish trend with strong volume."
-                        }
-                    ]
-                }
-            ],
-            "artifacts": [
-                {
-                    "artifact_id": str(uuid.uuid4()),
-                    "type": "market_analysis",
-                    "mime_type": "application/json",
-                    "display_name": "BTC Market Analysis",
-                    "parts": [
-                        {
-                            "type": "data",
-                            "data": {
-                                "trend": "bullish",
-                                "support_level": 65000,
-                                "resistance_level": 68000,
-                                "volume": "high"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "created_time": datetime.utcnow().isoformat() + "Z",
-            "updated_time": datetime.utcnow().isoformat() + "Z"
-        }
+        # Create the server
+        self.server = A2AServer(self.temp_file.name)
+        self.client = TestClient(self.server.app)
         
-        # Sample skill execution request
-        self.skill_request = {
-            "task_id": str(uuid.uuid4()),
-            "message": {
-                "role": "user",
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "Execute skill: market_analysis"
-                    },
-                    {
-                        "type": "data",
-                        "data": {
-                            "skill": "market_analysis",
-                            "inputs": {
-                                "assets": ["BTC", "ETH"]
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-    
-    @patch('src.a2a.server.tasks', {})
-    def test_tasks_get_nonexistent(self):
-        """Test getting a nonexistent task."""
-        response = self.client.get(f"/api/v1/tasks/{self.task_id}")
-        
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json()["detail"], f"Task {self.task_id} not found")
-    
-    @patch('src.a2a.server.tasks')
-    def test_tasks_get_existing(self, mock_tasks):
-        """Test getting an existing task."""
-        # Set up mock data
-        mock_tasks.get.return_value = self.completed_task
-        
-        # Make request
-        response = self.client.get(f"/api/v1/tasks/{self.task_id}")
-        
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.json()
-        self.assertEqual(response_data["task_id"], self.task_id)
-        self.assertEqual(response_data["status"], "completed")
-        self.assertEqual(len(response_data["messages"]), 2)
-        self.assertEqual(len(response_data["artifacts"]), 1)
-    
-    @patch('src.a2a.server.process_task')
-    @patch('src.a2a.server.tasks', {})
-    def test_tasks_send(self, mock_process_task):
-        """Test sending a new task."""
-        # Set up mock
-        mock_process_task.return_value = asyncio.Future()
-        mock_process_task.return_value.set_result(None)
-        
-        # Make request
-        response = self.client.post(
-            "/api/v1/tasks/send",
-            json=self.task_request
+        # Set up test data
+        self.test_task = Task(
+            task_id=str(uuid.uuid4()),
+            capability="test_capability",
+            parameters={"param1": "test_value"}
         )
         
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        response_data = response.json()
-        self.assertEqual(response_data["task_id"], self.task_id)
-        self.assertEqual(response_data["status"], "submitted")
-        self.assertEqual(len(response_data["messages"]), 1)
-        self.assertEqual(response_data["messages"][0], self.user_message)
-        
-        # Verify process_task was called
-        mock_process_task.assert_called_once()
-    
-    @patch('src.a2a.server.tasks')
-    def test_tasks_cancel_existing(self, mock_tasks):
-        """Test canceling an existing task."""
-        # Set up mock data
-        mock_tasks.get.return_value = {**self.completed_task, "status": "in_progress"}
-        
-        # Make request
-        response = self.client.delete(f"/api/v1/tasks/{self.task_id}")
-        
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.json()
-        self.assertEqual(response_data["task_id"], self.task_id)
-        self.assertEqual(response_data["status"], "canceled")
-    
-    @patch('src.a2a.server.tasks')
-    def test_tasks_cancel_nonexistent(self, mock_tasks):
-        """Test canceling a nonexistent task."""
-        # Set up mock to return None
-        mock_tasks.get.return_value = None
-        
-        # Make request
-        response = self.client.delete(f"/api/v1/tasks/{self.task_id}")
-        
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.json()["detail"], f"Task {self.task_id} not found")
-    
-    @patch('src.a2a.server.tasks', {})
-    def test_agent_discovery(self):
-        """Test agent discovery endpoint."""
-        response = self.client.get("/.well-known/agent.json")
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        agent_data = response.json()
-        
-        # Check required fields
-        self.assertIn("schema_version", agent_data)
-        self.assertIn("name", agent_data)
-        self.assertIn("description", agent_data)
-        self.assertIn("contact", agent_data)
-        self.assertIn("api", agent_data)
-        self.assertIn("skills", agent_data)
-        
-        # Check skills are defined
-        self.assertGreater(len(agent_data["skills"]), 0)
-        
-        # Check API info is correct
-        self.assertIn("url", agent_data["api"])
-        self.assertIn("auth", agent_data["api"])
-    
-    @patch('src.a2a.server.process_market_analysis')
-    async def test_process_task_market_analysis(self, mock_market_analysis):
-        """Test processing a market analysis task."""
-        # Setup mock
-        mock_market_analysis.return_value = {
-            "analysis_result": "Bullish trend detected",
-            "support_level": 65000,
-            "resistance_level": 68000
-        }
-        
-        # Create test task with market analysis text
-        task = {
-            "task_id": self.task_id,
-            "status": "submitted",
-            "messages": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "text": "Analyze BTC market"
-                        }
-                    ]
-                }
-            ],
-            "artifacts": [],
-            "created_time": datetime.utcnow().isoformat() + "Z",
-            "updated_time": datetime.utcnow().isoformat() + "Z"
-        }
-        
-        # Process the task
-        await process_task(task)
-        
-        # Assertions
-        mock_market_analysis.assert_called_once()
-        self.assertEqual(task["status"], "completed")
-        self.assertEqual(len(task["messages"]), 2)  # Original + response
-        self.assertGreaterEqual(len(task["artifacts"]), 1)
-    
-    @patch('src.a2a.server.process_trade_execution')
-    async def test_process_task_trade_execution(self, mock_trade_execution):
-        """Test processing a trade execution task."""
-        # Setup mock
-        mock_trade_execution.return_value = {
-            "order_id": "12345",
-            "status": "filled",
-            "execution_price": 66500,
-            "quantity": 0.5
-        }
-        
-        # Create test task with trade execution text
-        task = {
-            "task_id": self.task_id,
-            "status": "submitted",
-            "messages": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "type": "text",
-                            "text": "Execute BTC buy order at market price for 0.5 BTC"
-                        }
-                    ]
-                }
-            ],
-            "artifacts": [],
-            "created_time": datetime.utcnow().isoformat() + "Z",
-            "updated_time": datetime.utcnow().isoformat() + "Z"
-        }
-        
-        # Process the task
-        await process_task(task)
-        
-        # Assertions
-        mock_trade_execution.assert_called_once()
-        self.assertEqual(task["status"], "completed")
-        self.assertEqual(len(task["messages"]), 2)  # Original + response
-        self.assertGreaterEqual(len(task["artifacts"]), 1)
-    
-    @patch('src.a2a.server.process_skill_execution')
-    async def test_process_task_skill_execution(self, mock_skill_execution):
-        """Test processing a skill execution task."""
-        # Setup mock
-        mock_skill_execution.return_value = {
-            "result": "Skill executed successfully",
-            "data": {"key": "value"}
-        }
-        
-        # Create test task with skill execution message
-        task = {
-            "task_id": self.skill_request["task_id"],
-            "status": "submitted",
-            "messages": [self.skill_request["message"]],
-            "artifacts": [],
-            "created_time": datetime.utcnow().isoformat() + "Z",
-            "updated_time": datetime.utcnow().isoformat() + "Z"
-        }
-        
-        # Process the task
-        await process_task(task)
-        
-        # Assertions
-        mock_skill_execution.assert_called_once()
-        self.assertEqual(task["status"], "completed")
-        self.assertEqual(len(task["messages"]), 2)  # Original + response
-        
-        # Verify the skill name and inputs were correctly extracted
-        call_args = mock_skill_execution.call_args[0]
-        self.assertEqual(call_args[1], "market_analysis")
-        self.assertEqual(call_args[2], {"assets": ["BTC", "ETH"]})
-    
-    @patch('src.a2a.server.process_task')
-    @patch('src.a2a.server.tasks', {})
-    async def test_skills_execution_missing_params(self, mock_process_task):
-        """Test validation of skill execution with missing parameters."""
-        # Create an invalid skill request missing the data part
-        invalid_request = {
-            "task_id": str(uuid.uuid4()),
-            "message": {
-                "role": "user",
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "Execute skill: market_analysis"
-                    }
-                    # Missing the data part
-                ]
-            }
-        }
-        
-        # Make request
-        response = self.client.post(
-            "/api/v1/tasks/send",
-            json=invalid_request
+        self.test_message = Message(
+            message_id=str(uuid.uuid4()),
+            task_id=self.test_task.task_id,
+            from_agent="OtherAgent",
+            to_agent="TestAgent",
+            content={"text": "Test message content"}
         )
         
-        # The request should be accepted as it's a valid task, even if the skill execution is invalid
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        # Register a test capability handler
+        async def test_handler(parameters):
+            return {"result": f"Processed {parameters['param1']}"}
         
-        # The task should be processed
-        mock_process_task.assert_called_once()
+        self.server.register_capability_handler("test_capability", test_handler)
         
-        # The actual validation would happen in process_skill_execution
-        # which would handle the missing parameters
+    def tearDown(self):
+        """Tear down test fixtures, delete temporary files."""
+        os.unlink(self.temp_file.name)
     
-    @patch('src.a2a.server.tasks')
-    async def test_handle_error_in_task_processing(self, mock_tasks):
-        """Test handling errors during task processing."""
-        # Create a mock implementation of process_task that raises an exception
-        async def mock_process_task_with_error(task):
-            task["status"] = "error"
-            task["error"] = "An error occurred during processing"
-            raise Exception("Test exception")
-        
-        # Patch process_task with our mock implementation
-        with patch('src.a2a.server.process_task', mock_process_task_with_error):
-            # Set up task data
-            task = {
-                "task_id": self.task_id,
-                "status": "submitted",
-                "messages": [self.user_message],
-                "artifacts": [],
-                "created_time": datetime.utcnow().isoformat() + "Z",
-                "updated_time": datetime.utcnow().isoformat() + "Z"
-            }
-            
-            # Mock tasks.get to return our task
-            mock_tasks.get.return_value = task
-            
-            # Make request to send the task
+    def test_root_endpoint(self):
+        """Test the root endpoint returns basic agent info."""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["name"], "TestAgent")
+        self.assertEqual(data["version"], "1.0.0")
+        self.assertEqual(data["status"], "online")
+        self.assertIn("test_capability", data["capabilities"])
+        self.assertIn("timestamp", data)
+    
+    def test_get_agent_card(self):
+        """Test retrieving the agent card."""
+        response = self.client.get("/api/v1/agent")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), self.agent_card)
+    
+    def test_create_task(self):
+        """Test creating a new task."""
+        with patch.object(self.server, '_process_task', AsyncMock()) as mock_process:
             response = self.client.post(
-                "/api/v1/tasks/send",
-                json=self.task_request
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"},
+                    "priority": "high"
+                }
             )
+            self.assertEqual(response.status_code, 201)
+            data = response.json()
+            self.assertEqual(data["capability"], "test_capability")
+            self.assertEqual(data["parameters"], {"param1": "test_value"})
+            self.assertEqual(data["priority"], "high")
+            self.assertEqual(data["status"], "pending")
+            self.assertIsNotNone(data["task_id"])
+            self.assertIsNotNone(data["created_at"])
+            self.assertIsNotNone(data["updated_at"])
             
-            # The request should be accepted
-            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-            
-            # Allow some time for the task to be processed
-            await asyncio.sleep(0.1)
-            
-            # Get the task status
-            response = self.client.get(f"/api/v1/tasks/{self.task_id}")
-            
-            # The task should be in error state
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.json()["status"], "error")
-            self.assertEqual(response.json()["error"], "An error occurred during processing")
+            # Verify the background task was triggered
+            mock_process.assert_called_once()
+    
+    def test_create_task_invalid_capability(self):
+        """Test creating a task with an invalid capability."""
+        response = self.client.post(
+            "/api/v1/tasks",
+            json={
+                "capability": "invalid_capability",
+                "parameters": {"param1": "test_value"}
+            }
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("not supported", response.json()["detail"])
+    
+    def test_get_task(self):
+        """Test retrieving a task by ID."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Now retrieve it
+        get_response = self.client.get(f"/api/v1/tasks/{task_id}")
+        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(get_response.json()["task_id"], task_id)
+    
+    def test_get_task_not_found(self):
+        """Test retrieving a non-existent task."""
+        response = self.client.get(f"/api/v1/tasks/{uuid.uuid4()}")
+        self.assertEqual(response.status_code, 404)
+    
+    def test_update_task(self):
+        """Test updating a task's status and result."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Now update it
+        update_response = self.client.put(
+            f"/api/v1/tasks/{task_id}",
+            json={
+                "status": "completed",
+                "result": {"output": "test_result"}
+            }
+        )
+        self.assertEqual(update_response.status_code, 200)
+        updated_task = update_response.json()
+        self.assertEqual(updated_task["status"], "completed")
+        self.assertEqual(updated_task["result"], {"output": "test_result"})
+    
+    def test_cancel_task(self):
+        """Test canceling a task."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Now cancel it
+        delete_response = self.client.delete(f"/api/v1/tasks/{task_id}")
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertIn("canceled", delete_response.json()["message"])
+        
+        # Verify the task is marked as canceled
+        task_response = self.client.get(f"/api/v1/tasks/{task_id}")
+        self.assertEqual(task_response.json()["status"], "canceled")
+    
+    def test_send_message(self):
+        """Test sending a message for a task."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Now send a message
+        message_response = self.client.post(
+            f"/api/v1/tasks/{task_id}/messages",
+            json={
+                "message_id": str(uuid.uuid4()),
+                "task_id": task_id,
+                "from_agent": "OtherAgent",
+                "to_agent": "TestAgent",
+                "content": {"text": "Test message"}
+            }
+        )
+        self.assertEqual(message_response.status_code, 201)
+        self.assertEqual(message_response.json()["content"]["text"], "Test message")
+    
+    def test_send_message_with_parts(self):
+        """Test sending a message with additional parts."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Now send a message with parts
+        message_response = self.client.post(
+            f"/api/v1/tasks/{task_id}/messages",
+            json={
+                "message_id": str(uuid.uuid4()),
+                "task_id": task_id,
+                "from_agent": "OtherAgent",
+                "to_agent": "TestAgent",
+                "content": {"text": "Test message with attachment"},
+                "parts": [
+                    {
+                        "type": "text/plain",
+                        "content": "Plain text content",
+                        "filename": "test.txt"
+                    }
+                ]
+            }
+        )
+        self.assertEqual(message_response.status_code, 201)
+        self.assertEqual(len(message_response.json()["parts"]), 1)
+        self.assertEqual(message_response.json()["parts"][0]["filename"], "test.txt")
+    
+    def test_get_messages(self):
+        """Test retrieving messages for a task."""
+        # First create a task
+        with patch.object(self.server, '_process_task', AsyncMock()):
+            create_response = self.client.post(
+                "/api/v1/tasks",
+                json={
+                    "capability": "test_capability",
+                    "parameters": {"param1": "test_value"}
+                }
+            )
+            task_id = create_response.json()["task_id"]
+        
+        # Send a couple of messages
+        for i in range(2):
+            self.client.post(
+                f"/api/v1/tasks/{task_id}/messages",
+                json={
+                    "message_id": str(uuid.uuid4()),
+                    "task_id": task_id,
+                    "from_agent": "OtherAgent",
+                    "to_agent": "TestAgent",
+                    "content": {"text": f"Test message {i+1}"}
+                }
+            )
+        
+        # Now retrieve all messages
+        messages_response = self.client.get(f"/api/v1/tasks/{task_id}/messages")
+        self.assertEqual(messages_response.status_code, 200)
+        messages = messages_response.json()
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0]["content"]["text"], "Test message 1")
+        self.assertEqual(messages[1]["content"]["text"], "Test message 2")
+    
+    def test_process_task(self):
+        """Test the task processing function."""
+        task = Task(
+            task_id=str(uuid.uuid4()),
+            capability="test_capability",
+            parameters={"param1": "test_value"}
+        )
+        
+        # Create an async context for testing the async method
+        import asyncio
+        
+        async def run_test():
+            await self.server._process_task(task)
+            self.assertEqual(task.status, "completed")
+            self.assertEqual(task.result, {"result": "Processed test_value"})
+        
+        # Run the coroutine
+        asyncio.run(run_test())
+    
+    def test_process_task_error(self):
+        """Test task processing with an error."""
+        task = Task(
+            task_id=str(uuid.uuid4()),
+            capability="test_capability",
+            parameters={"param1": "test_value"}
+        )
+        
+        # Register a handler that raises an exception
+        async def error_handler(parameters):
+            raise ValueError("Test error")
+        
+        self.server.register_capability_handler("test_capability", error_handler)
+        
+        # Create an async context for testing
+        import asyncio
+        
+        async def run_test():
+            await self.server._process_task(task)
+            self.assertEqual(task.status, "failed")
+            self.assertIn("message", task.error)
+            self.assertEqual(task.error["type"], "ValueError")
+            self.assertEqual(task.error["message"], "Test error")
+        
+        # Run the coroutine
+        asyncio.run(run_test())
+    
+    def test_create_a2a_server_factory(self):
+        """Test the factory function for creating an A2A server."""
+        server = create_a2a_server(self.temp_file.name)
+        self.assertIsInstance(server, A2AServer)
+        self.assertEqual(server.agent_card, self.agent_card)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main() 
