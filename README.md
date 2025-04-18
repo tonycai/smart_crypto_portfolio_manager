@@ -4,7 +4,7 @@ A sophisticated multi-agent system for intelligent cryptocurrency portfolio mana
 
 ## Overview
 
-The Smart Crypto Portfolio Manager is a modular and extensible system that leverages multiple specialized AI agents to automate and optimize cryptocurrency trading. Each agent focuses on a specific aspect of trading, and they communicate with each other through a standardized A2A protocol.
+The Smart Crypto Portfolio Manager is a modular and extensible system that leverages multiple specialized AI agents to automate and optimize cryptocurrency trading. Each agent focuses on a specific aspect of trading, and they communicate with each other through a standardized A2A protocol, implementing [Google's open Agent-to-Agent (A2A) protocol](https://github.com/google/A2A) for seamless interoperability with other agent systems.
 
 ## System Architecture
 
@@ -23,6 +23,7 @@ The system consists of five main agents:
 Agents communicate using two protocols:
 
 #### Agent-to-Agent (A2A) Protocol
+- Implements the [Google Agent-to-Agent (A2A) protocol](https://github.com/google/A2A) for standardized agent communication
 - Agent discovery through agent cards (JSON files describing capabilities)
 - Task-based interaction model
 - Structured JSON messages
@@ -33,6 +34,38 @@ Agents communicate using two protocols:
 - Allows external AI systems to interact with the platform
 - Structured JSON schemas for function definitions
 - Streamlined function calling interface
+
+## A2A Protocol Integration
+
+This project fully implements Google's [Agent-to-Agent (A2A) protocol](https://github.com/google/A2A), allowing our agents to communicate not only with each other but also with any other A2A-compatible agents in the ecosystem. This integration provides several benefits:
+
+### A2A Features Implemented
+
+- **Agent Card:** Our system exposes a standard Agent Card at `/.well-known/agent.json` describing all agent capabilities
+- **Task-Based API:** All agent interactions follow the A2A task lifecycle (submitted, working, input-required, completed, failed, canceled)
+- **Streaming Support:** Real-time task updates via Server-Sent Events (SSE)
+- **Push Notifications:** Proactive updates to client applications
+- **Skills Framework:** Standardized skill definitions for all agent capabilities
+
+### Interoperability Benefits
+
+- Connect with agents built on other frameworks (CrewAI, LangGraph, Semantic Kernel, etc.)
+- Extend capabilities through third-party A2A agents
+- Future-proof design aligned with emerging industry standards
+- Simplified integration with LLM-based systems
+
+### A2A Agent Ecosystem
+
+Our implementation is compatible with the growing ecosystem of A2A-enabled agents and frameworks, including:
+
+- Agent Development Kit (ADK)
+- CrewAI
+- LangGraph
+- Genkit
+- LlamaIndex
+- Semantic Kernel
+
+For more information on the A2A protocol, visit the [official GitHub repository](https://github.com/google/A2A).
 
 ## Use Cases
 

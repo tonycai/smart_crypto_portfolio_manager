@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "1.0",
+  "name": "Smart Crypto Portfolio Manager",
+  "description": "A sophisticated multi-agent system for intelligent cryptocurrency portfolio management using the Agent-to-Agent (A2A) communication protocol.",
+  "contact": {
+    "name": "Tony",
+    "url": "https://github.com/tonycai/smart_crypto_portfolio_manager",
+    "email": "contact@example.com"
+  },
+  "api": {
+    "url": "https://api.smartcryptoportfolio.example.com/a2a",
+    "authentication": {
+      "type": "oauth2"
+    }
+  },
+  "icon": {
+    "url": "https://example.com/logo.png",
+    "alt": "Smart Crypto Portfolio Manager Logo"
+  },
+  "capabilities": {
+    "tasks": {
+      "streaming": true,
+      "pushNotifications": true
+    }
+  },
+  "skills": [
+    {
+      "name": "market_analysis",
+      "description": "Monitors crypto markets, analyzes trends, and identifies trading opportunities",
+      "inputs": [
+        {
+          "name": "asset",
+          "description": "Cryptocurrency symbol to analyze",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "time_frame",
+          "description": "Analysis time frame (e.g., '1h', '1d', '1w')",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "analysis_result",
+          "description": "Market analysis with trend indicators and trading signals",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "name": "trade_execution",
+      "description": "Executes buy/sell orders on various crypto exchanges",
+      "inputs": [
+        {
+          "name": "asset",
+          "description": "Cryptocurrency symbol to trade",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "order_type",
+          "description": "Type of order (MARKET, LIMIT)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "side",
+          "description": "Trade direction (BUY, SELL)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "amount",
+          "description": "Amount to trade",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "price",
+          "description": "Price for limit orders",
+          "type": "number",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "order_result",
+          "description": "Order execution details and status",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "name": "risk_management",
+      "description": "Monitors portfolio risk exposure and suggests risk mitigation actions",
+      "inputs": [
+        {
+          "name": "portfolio_id",
+          "description": "Portfolio identifier",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "risk_assessment",
+          "description": "Risk metrics and recommended actions",
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "name": "portfolio_reporting",
+      "description": "Generates reports on trading performance and portfolio valuation",
+      "inputs": [
+        {
+          "name": "portfolio_id",
+          "description": "Portfolio identifier",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "time_period",
+          "description": "Time period for the report",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "portfolio_report",
+          "description": "Detailed portfolio performance report",
+          "type": "object"
+        }
+      ]
+    }
+  ]
+} 
