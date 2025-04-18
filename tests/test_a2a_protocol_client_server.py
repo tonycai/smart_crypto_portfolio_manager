@@ -12,12 +12,11 @@ import uuid
 import threading
 from unittest.mock import patch, MagicMock, mock_open
 import requests
-import httpx
-from starlette.testclient import TestClient
 import uvicorn
 
 from src.a2a.client import A2AClient
 from src.a2a.server import app, tasks_db
+from tests.custom_test_client import CustomTestClient
 
 
 class TestA2AClientServerIntegration(unittest.TestCase):
@@ -26,11 +25,8 @@ class TestA2AClientServerIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up for all tests."""
-        # Initialize test client directly with httpx
-        cls.test_client = httpx.Client(
-            base_url="http://testserver",
-            transport=httpx.ASGITransport(app=app)
-        )
+        # Initialize test client using our custom wrapper
+        cls.test_client = CustomTestClient(app)
         
         # Clear the tasks_db before each test class execution
         tasks_db.clear()

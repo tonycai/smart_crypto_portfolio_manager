@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime
 import httpx
 
-from starlette.testclient import TestClient
+from tests.custom_test_client import CustomTestClient
 
 from src.a2a.server import A2AServer, Task, Message, MessagePart, create_a2a_server
 
@@ -51,11 +51,8 @@ class TestA2AServer(unittest.TestCase):
         # Create the server
         self.server = A2AServer(self.temp_file.name)
         
-        # Initialize test client directly with httpx
-        self.client = httpx.Client(
-            base_url="http://testserver",
-            transport=httpx.ASGITransport(app=self.server.app)
-        )
+        # Initialize test client with CustomTestClient
+        self.client = CustomTestClient(self.server.app)
         
         # Set up test data
         self.test_task = Task(
