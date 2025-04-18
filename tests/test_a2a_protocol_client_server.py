@@ -13,7 +13,7 @@ import threading
 from unittest.mock import patch, MagicMock, mock_open
 import requests
 import httpx
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 import uvicorn
 
 from src.a2a.client import A2AClient
@@ -26,15 +26,11 @@ class TestA2AClientServerIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up for all tests."""
-        # Initialize test client using a version-compatible approach
-        try:
-            cls.test_client = TestClient(app)
-        except TypeError as e:
-            if "unexpected keyword argument 'app'" in str(e):
-                # Use the base_url approach for newer versions of httpx/starlette
-                cls.test_client = httpx.Client(base_url="http://testserver", transport=httpx.ASGITransport(app=app))
-            else:
-                raise
+        # Initialize test client directly with httpx
+        cls.test_client = httpx.Client(
+            base_url="http://testserver",
+            transport=httpx.ASGITransport(app=app)
+        )
         
         # Clear the tasks_db before each test class execution
         tasks_db.clear()

@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime
 import httpx
 
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 
 from src.a2a.server import A2AServer, Task, Message, MessagePart, create_a2a_server
 
@@ -51,15 +51,11 @@ class TestA2AServer(unittest.TestCase):
         # Create the server
         self.server = A2AServer(self.temp_file.name)
         
-        # Initialize TestClient - using a safer approach that's compatible with newer versions
-        try:
-            self.client = TestClient(self.server.app)
-        except TypeError as e:
-            if "unexpected keyword argument 'app'" in str(e):
-                # Use the base_url approach instead for newer versions of httpx/starlette
-                self.client = httpx.Client(base_url="http://testserver", transport=httpx.ASGITransport(app=self.server.app))
-            else:
-                raise
+        # Initialize test client directly with httpx
+        self.client = httpx.Client(
+            base_url="http://testserver",
+            transport=httpx.ASGITransport(app=self.server.app)
+        )
         
         # Set up test data
         self.test_task = Task(
