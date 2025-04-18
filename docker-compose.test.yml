@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  a2a-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      # Mount the code directory for development
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./a2a:/app/a2a
+      - ./.well-known:/app/.well-known
+    environment:
+      - PYTHONPATH=/app
+      # Enable pytest to show print statements
+      - PYTHONUNBUFFERED=1
+    command: "/app/run_tests.sh" 

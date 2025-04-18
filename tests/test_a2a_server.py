@@ -16,7 +16,7 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
-from a2a.server import A2AServer, Task, Message, MessagePart, create_a2a_server
+from src.a2a.server import A2AServer, Task, Message, MessagePart, create_a2a_server
 
 
 class TestA2AServer(unittest.TestCase):

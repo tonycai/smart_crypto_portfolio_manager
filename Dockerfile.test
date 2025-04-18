@@ -1,0 +1,28 @@
+FROM python:3.9-slim
+
+# Set working directory in container
+WORKDIR /app
+
+# Copy requirements files
+COPY requirements.txt requirements-a2a.txt ./
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r requirements-a2a.txt \
+    && pip install --no-cache-dir pytest pytest-asyncio
+
+# Install additional development dependencies
+RUN pip install --no-cache-dir black mypy isort flake8
+
+# Copy application code
+COPY . .
+
+# Setup Python path to properly find modules
+ENV PYTHONPATH=/app:$PYTHONPATH
+
+# Entry point script for testing
+RUN echo '#!/bin/bash\npython -m pytest tests/test_a2a_server.py tests/test_a2a_protocol_client_server.py -v "$@"' > /app/run_tests.sh \
+    && chmod +x /app/run_tests.sh
+
+# Default command to run tests
+CMD ["/app/run_tests.sh"] 
