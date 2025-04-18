@@ -24,10 +24,7 @@ class CustomTestClient:
         """
         self.app = app
         self.base_url = "http://testserver"
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url, 
-            transport=httpx.ASGITransport(app=app)
-        )
+        self.transport = httpx.ASGITransport(app=app)
     
     def get(self, url: str, **kwargs):
         """
@@ -40,13 +37,16 @@ class CustomTestClient:
         Returns:
             A Response object
         """
-        # Extract the base_url if provided and ignore it
+        # Remove base_url if it's in kwargs
         kwargs.pop('base_url', None)
         
+        # Build the full URL
+        full_url = f"{self.base_url}{url}"
+        
+        # Use httpx with transport but without base_url
         return httpx.get(
-            url, 
-            base_url=self.base_url,
-            transport=httpx.ASGITransport(app=self.app),
+            full_url,
+            transport=self.transport,
             **kwargs
         )
     
@@ -62,14 +62,17 @@ class CustomTestClient:
         Returns:
             A Response object
         """
-        # Extract the base_url if provided and ignore it
+        # Remove base_url if it's in kwargs
         kwargs.pop('base_url', None)
         
+        # Build the full URL
+        full_url = f"{self.base_url}{url}"
+        
+        # Use httpx with transport but without base_url
         return httpx.post(
-            url,
+            full_url,
             json=json,
-            base_url=self.base_url,
-            transport=httpx.ASGITransport(app=self.app),
+            transport=self.transport,
             **kwargs
         )
     
@@ -85,14 +88,17 @@ class CustomTestClient:
         Returns:
             A Response object
         """
-        # Extract the base_url if provided and ignore it
+        # Remove base_url if it's in kwargs
         kwargs.pop('base_url', None)
         
+        # Build the full URL
+        full_url = f"{self.base_url}{url}"
+        
+        # Use httpx with transport but without base_url
         return httpx.put(
-            url,
+            full_url,
             json=json,
-            base_url=self.base_url,
-            transport=httpx.ASGITransport(app=self.app),
+            transport=self.transport,
             **kwargs
         )
     
@@ -107,12 +113,15 @@ class CustomTestClient:
         Returns:
             A Response object
         """
-        # Extract the base_url if provided and ignore it
+        # Remove base_url if it's in kwargs
         kwargs.pop('base_url', None)
         
+        # Build the full URL
+        full_url = f"{self.base_url}{url}"
+        
+        # Use httpx with transport but without base_url
         return httpx.delete(
-            url,
-            base_url=self.base_url,
-            transport=httpx.ASGITransport(app=self.app),
+            full_url,
+            transport=self.transport,
             **kwargs
         ) 

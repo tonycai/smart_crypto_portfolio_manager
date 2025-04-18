@@ -9,7 +9,7 @@ COPY requirements.txt requirements-a2a.txt ./
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir -r requirements-a2a.txt \
-    && pip install --no-cache-dir pytest pytest-asyncio httpx
+    && pip install --no-cache-dir pytest pytest-asyncio "httpx==0.23.0"
 
 # Install additional development dependencies
 RUN pip install --no-cache-dir black mypy isort flake8
