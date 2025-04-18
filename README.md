@@ -195,6 +195,14 @@ The Orchestration Agent also implements the MCP protocol:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Donations
+
+If you find this project helpful and would like to support its development, you can donate cryptocurrency to the following addresses:
+
+- **Solana (SOL)**: `ESUpLq9tCo1bmauWoN1rgNiYwwr5K587h15SrJz9L7ct` (Phantom Wallet)
+
+Your support is greatly appreciated and helps maintain and improve this project!
+
 ## License
 
 MIT
