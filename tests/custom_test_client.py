@@ -23,8 +23,9 @@ class CustomTestClient:
             app: An ASGI application
         """
         self.app = app
+        self.base_url = "http://testserver"
         self._client = httpx.AsyncClient(
-            base_url="http://testserver", 
+            base_url=self.base_url, 
             transport=httpx.ASGITransport(app=app)
         )
     
@@ -39,9 +40,12 @@ class CustomTestClient:
         Returns:
             A Response object
         """
+        # Extract the base_url if provided and ignore it
+        kwargs.pop('base_url', None)
+        
         return httpx.get(
             url, 
-            base_url="http://testserver",
+            base_url=self.base_url,
             transport=httpx.ASGITransport(app=self.app),
             **kwargs
         )
@@ -58,10 +62,13 @@ class CustomTestClient:
         Returns:
             A Response object
         """
+        # Extract the base_url if provided and ignore it
+        kwargs.pop('base_url', None)
+        
         return httpx.post(
             url,
             json=json,
-            base_url="http://testserver",
+            base_url=self.base_url,
             transport=httpx.ASGITransport(app=self.app),
             **kwargs
         )
@@ -78,10 +85,13 @@ class CustomTestClient:
         Returns:
             A Response object
         """
+        # Extract the base_url if provided and ignore it
+        kwargs.pop('base_url', None)
+        
         return httpx.put(
             url,
             json=json,
-            base_url="http://testserver",
+            base_url=self.base_url,
             transport=httpx.ASGITransport(app=self.app),
             **kwargs
         )
@@ -97,9 +107,12 @@ class CustomTestClient:
         Returns:
             A Response object
         """
+        # Extract the base_url if provided and ignore it
+        kwargs.pop('base_url', None)
+        
         return httpx.delete(
             url,
-            base_url="http://testserver",
+            base_url=self.base_url,
             transport=httpx.ASGITransport(app=self.app),
             **kwargs
         ) 

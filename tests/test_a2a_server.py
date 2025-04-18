@@ -13,6 +13,7 @@ import tempfile
 from unittest.mock import patch, AsyncMock, MagicMock
 import uuid
 from datetime import datetime
+import httpx
 
 from tests.custom_test_client import CustomTestClient
 
