@@ -716,6 +716,12 @@ def create_a2a_server(agent_card_path: str) -> A2AServer:
     return A2AServer(agent_card_path)
 
 
+# Create a default FastAPI app for backward compatibility
+# This allows old code to continue to import 'app' directly from this module
+default_server = A2AServer(".well-known/agent.json")
+app = default_server.app
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 
