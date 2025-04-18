@@ -13,7 +13,6 @@ import tempfile
 from unittest.mock import patch, AsyncMock, MagicMock
 import uuid
 from datetime import datetime
-import httpx
 
 from tests.custom_test_client import CustomTestClient
 
@@ -311,6 +310,8 @@ class TestA2AServer(unittest.TestCase):
         import asyncio
         
         async def run_test():
+            # Store task in task_registry using task_id as key instead of Task object
+            self.server.task_registry[task.task_id] = task
             await self.server._process_task(task)
             self.assertEqual(task.status, "completed")
             self.assertEqual(task.result, {"result": "Processed test_value"})
@@ -336,6 +337,8 @@ class TestA2AServer(unittest.TestCase):
         import asyncio
         
         async def run_test():
+            # Store task in task_registry using task_id as key instead of Task object
+            self.server.task_registry[task.task_id] = task
             await self.server._process_task(task)
             self.assertEqual(task.status, "failed")
             self.assertIn("message", task.error)
@@ -349,7 +352,8 @@ class TestA2AServer(unittest.TestCase):
         """Test the factory function for creating an A2A server."""
         server = create_a2a_server(self.temp_file.name)
         self.assertIsInstance(server, A2AServer)
-        self.assertEqual(server.agent_card, self.agent_card)
+        # Use the correct attribute to access the agent config
+        self.assertEqual(server.agent_config, self.agent_card)
 
 
 if __name__ == "__main__":
